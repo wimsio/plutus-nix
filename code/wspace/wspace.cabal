@@ -1,0 +1,85 @@
+cabal-version:      3.4
+name:               wspace
+version:            0.1.0.0
+author:             IOG's education team, Bernard Sibanda
+maintainer:         education@iohk.io, cto@wims.io
+license:            Apache-2.0
+build-type:         Simple
+
+common common-all
+    build-depends:
+        base ^>=4.14.3.0,
+        aeson,
+        bytestring,
+        containers,
+        cardano-api,
+        data-default,
+        plutus-ledger-api,
+        cardano-ledger-core,
+        plutus-tx-plugin,
+        plutus-tx,
+        base16-bytestring,
+        text,
+        serialise,
+        utilities,
+        cardano-ledger-shelley,
+        bech32 >=1.1 && <2.0,
+        time
+    default-language: Haskell2010
+    ghc-options:
+        -Wall
+        -fobject-code
+        -fno-ignore-interface-pragmas
+        -fno-omit-interface-pragmas
+        -fno-strictness
+        -fno-spec-constr
+        -fno-specialise
+        -fexpose-all-unfoldings
+        -fplugin-opt PlutusTx.Plugin:defer-errors
+
+common common-all-tests
+    import:           common-all
+    build-depends:    QuickCheck,
+                      tasty,
+                      plutus-simple-model
+
+library
+    import:             common-all
+    hs-source-dirs:     lecture
+    exposed-modules:
+        ParameterizedVesting,
+        CGPlutusUtilsv1,
+        CGTime,
+        Vesting
+
+executable vesting-exe
+    main-is:            Main.hs
+    hs-source-dirs:     tests
+    build-depends:
+        base >=4.14 && <4.15,
+        plutus-ledger-api,
+        plutus-tx,
+        wspace,
+        utilities
+    default-language:   Haskell2010
+test-suite wspace-tests
+    type:                exitcode-stdio-1.0
+    hs-source-dirs:      tests
+    main-is:             Spec.hs
+    build-depends:
+      base >=4.14 && <4.15,
+      wspace,
+      utilities,
+      tasty,
+      tasty-hunit,
+      QuickCheck,
+      bytestring,
+      base16-bytestring,
+      plutus-ledger-api,
+      plutus-tx
+    other-modules:
+      CGPlutusUtilsSpec
+      CGTimeSpec
+      ParameterizedVestingSpec
+      VestingSpec
+    default-language:    Haskell2010

@@ -1,0 +1,26 @@
+{
+    "nixpkgs": {
+        "branch": "release-21.05",
+        "description": "Nix Packages collection",
+        "homepage": "",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "5f244caea76105b63d826911b2a1563d33ff1cdc",
+        "sha256": "1xlgynfw9svy7nvh9nkxsxdzncv9hg99gbvbwv3gmrhmzc3sar75",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/5f244caea76105b63d826911b2a1563d33ff1cdc.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "plutus-simple-model": {
+        "branch": "compat",
+        "description": "Unit testing with resource estimation for Plutus",
+        "homepage": null,
+        "owner": "geniusyield",
+        "repo": "plutus-simple-model",
+        "rev": "d710c4c5400ff7072fe89c337c1cdd0128dc5d99",
+        "sha256": "16zwqr5qqwrxnawgc2y4q72lny8inac21kxqsip530ravqcc153n",
+        "type": "tarball",
+        "url": "https://github.com/geniusyield/plutus-simple-model/archive/d710c4c5400ff7072fe89c337c1cdd0128dc5d99.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    }
+}
