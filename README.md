@@ -240,4 +240,48 @@ SOFTWARE.
 - **Company:** Coxygen Global  
 - **Date:** May 05, 2025
 
+Whos is Bernard Sibanda?
+
+## **Professional Introduction: Bernard Sibanda**
+
+I am **Bernard Sibanda**, a technologist, educator, and blockchain advocate with a diverse academic and technical background. I hold a **BSc in Computing**, a **BTech in Education**, and a **Diploma in Philosophy**, complemented by certifications including **Microsoft Certified Professional (MCP)**, **CompTIA A+**, and **Haskell Plutus** from the **European Business University of Luxembourg (EBU)**. I have **upskilled on the professional AI Engineer Path via Scrimba**, reflecting my deep commitment to continuous learning and innovation at the intersection of education, blockchain, and artificial intelligence.
+
+I serve as the **Founder**, **Chief Technology Officer (CTO)**, and **Intersect Developer Advocate** at:
+
+* **WIMS-Cardano Global**
+* **Coxygen Global**
+* **Satoshi Africa**
+* **Tobb Technologies**
+
+## **My Blockchain Focus**
+
+My primary focus is on strengthening and scaling the **Cardano blockchain ecosystem**, working closely with **Intersect MBO** and **Project Catalyst**. I actively promote tools, strategies, and learning pathways that enhance **usability**, **utility**, and **developer onboarding** across Cardano.
+
+### **Key Focus Areas**
+
+* Empowering developer productivity with **Haskell/Plutus**, **Plutus Core**, and **Plinth**
+* **Training alternative smart contract languages**: **Helios**, **PHP**, **Rust**, **Aiken**, and **Lucid**—across the world
+* Contributing to **Plutus HA** development and formal verification methods
+* Supporting the broader Cardano roadmap through inclusive, community-led innovation
+
+## **My Aims and Objectives**
+
+My mission is to **democratize access to smart contract development** by building an ecosystem that is accessible, fast, and developer-friendly on a global scale. I aim to:
+
+* Deliver **live technical training and support** for Cardano smart contract development
+* **Recruit thousands of university and college students** worldwide into the Cardano ecosystem
+* **Onboard new developers** with practical, language-inclusive training approaches
+* Build and maintain open-source libraries, templates, and documentation such as:
+
+  * `coxylib.js` – a utility library for Cardano developers
+  * `jimba.js` – tools for interactive learning and prototyping
+  * `pheidippides (rPAD)` – a toolkit for **rapid Plutus App Development**
+* Promote **fast learning, easy onboarding, and streamlined development workflows**
+* Apply **formal methods** and **property-based testing** to ensure secure and reliable smart contracts
+* **Collaborate with non-technical stakeholders**—from business leaders to promoters—to align technology with real-world needs
+* Continuously **enhance the Cardano developer experience** by identifying friction points and developing effective solutions
+
+I envision a world where **every developer can contribute to and benefit from Cardano—one of the top 10 blockchains in the world**.
+
 ---
+
