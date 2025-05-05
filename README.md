@@ -1,5 +1,7 @@
 # 🧠 Plutus Smart Contracts Setup Guide with Nix & Cabal
 
+![Pasted image (20)](https://github.com/user-attachments/assets/fe3da9b9-c2cf-4c2a-8ad6-b66e543e530a)
+
 Welcome to the Plutus development onboarding guide! This document will walk you through setting up a local Plutus development environment using **Nix** and **Cabal**, and understanding the `Vesting` contract structure, utilities, and key Haskell/Plutus concepts.
 
 ---
