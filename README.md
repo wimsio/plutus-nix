@@ -1,6 +1,9 @@
 # 🧠 Plutus Smart Contracts Setup Guide with Nix & Cabal
 
 <img src="https://github.com/user-attachments/assets/fe3da9b9-c2cf-4c2a-8ad6-b66e543e530a" alt="placeholder" width="80" height="50">
+Pheidippides - rapid Plutus Application Development(rPAD)
+
+Aim: To promote rapid, easy learning, simplification, and development on Cardano. Just like a greek messanger Pheidippides, who ran to deliver good news of victory, rPAD aims to quickly deliver quick dApps to Cardano communities.
 
 Welcome to the Plutus development onboarding guide! This document will walk you through setting up a local Plutus development environment using **Nix** and **Cabal**, and understanding the `Vesting` contract structure, utilities, and key Haskell/Plutus concepts.
 
