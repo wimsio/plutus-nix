@@ -7,6 +7,8 @@ Aim: To promote rapid, easy learning, simplification, and development on Cardano
 
 Welcome to the Plutus development onboarding guide! This document will walk you through setting up a local Plutus development environment using **Nix** and **Cabal**, and understanding the `Vesting` contract structure, utilities, and key Haskell/Plutus concepts.
 
+### NOTE! You will find detailed tutorials for modules in the following directory /code/wspace/lecture
+
 ---
 
 ## 📚 Table of Contents

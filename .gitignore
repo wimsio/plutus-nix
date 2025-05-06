@@ -1,0 +1,61 @@
+# Build artifacts
+dist/
+dist-newstyle/
+*.hi
+*.o
+*.dyn_o
+*.dyn_hi
+
+# Cabal
+cabal.project.local
+cabal.project.local~  # temp backup
+
+# GHC environment
+.ghc.environment.*
+.stack-work/           # if you ever used Stack before
+
+# Executables
+*.out
+*.exe
+*.vexe
+*.pdb
+*.dll
+*.dylib
+*.so
+
+# Haskell bytecode (e.g., from GHCi)
+*.hc
+*.chi
+*.chs.h
+*.dump*
+*.prof
+*.aux
+*.hp
+*.eventlog
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Editor/IDE
+.vscode/
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+
+# Node/NPM if using frontend
+node_modules/
+package-lock.json
+
+# Compiled Plutus scripts / assets
+assets/*.plutus
+assets/*.flat
+assets/*.uplc
