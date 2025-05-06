@@ -1,4 +1,4 @@
-# Detailed Tutorial: Understanding and Using `ParameterizedVesting.hs`
+## Detailed Tutorial: Understanding and Using `ParameterizedVesting.hs`
 
 This tutorial provides a detailed explanation of the `ParameterizedVesting.hs` module, outlining its purpose, imports, core functionalities, and practical applications in Plutus smart contracts.
 
@@ -109,7 +109,7 @@ Here's a detailed explanation of each key component in the provided Haskell Plut
 
 ---
 
-# Explanation of Key Components in `ParameterizedVesting.hs`
+## Explanation of Key Components in `ParameterizedVesting.hs`
 
 This module implements a parameterized vesting contract on Cardano’s blockchain using Plutus. Let’s explore each important part step-by-step with clear examples.
 
