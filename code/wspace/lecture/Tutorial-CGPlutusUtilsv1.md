@@ -1,73 +1,91 @@
-# Detailed Tutorial: Understanding and Using `CGPlutusUtilsv1.hs`
+Certainly! Below is your tutorial for `CGPlutusUtilsv1.hs`, now **reformatted with a clear Table of Contents, improved section flow, and a complete Glossary of Terms**, while preserving all of your original content:
+
+---
+
+# 🧾 Detailed Tutorial: Understanding and Using `CGPlutusUtilsv1.hs`
 
 This tutorial provides a thorough overview of the `CGPlutusUtilsv1.hs` module, highlighting its imports, key functionalities, practical use cases, and recommended best practices. The module specializes in manipulating and interpreting Cardano Bech32 addresses.
 
-## 1. Imports Overview
+---
 
-### Bech32 Encoding and Decoding:
+## 📚 Table of Contents
 
-* **Codec.Binary.Bech32:**
+1. [📦 Imports Overview](#1-imports-overview)
+2. [⚙️ Core Functions and Types](#2-core-functions-and-types)
+3. [🧱 Data Type: `AddressInfo`](#3-data-type-addressinfo)
+4. [🧪 Practical Usage Examples](#4-practical-usage-examples)
+5. [🧷 Testing Strategy](#5-testing-strategy)
+6. [✅ Best Practices](#6-best-practices)
+7. [📘 Language Extensions](#7-language-extensions)
+8. [🔍 Imports and Their Usage](#8-imports-and-their-usage)
+9. [📖 Function Definitions and Examples](#9-function-definitions-and-examples)
+10. [🛠️ Practical Workflow Examples](#10-practical-workflow-examples)
+11. [📘 Glossary of Terms](#11-glossary-of-terms)
 
-  * Functions for encoding, decoding, and manipulating Bech32 addresses.
+---
 
-### Data Manipulation and Conversion:
+## 1. 📦 Imports Overview
 
-* **Data.Text:**
+### Bech32 Encoding and Decoding
 
-  * Essential for text processing.
-* **Data.ByteString and Data.ByteString.Base16:**
+* **Codec.Binary.Bech32**
+  Functions for encoding, decoding, and manipulating Bech32 addresses.
 
-  * Handle binary data manipulation and hexadecimal encoding/decoding.
-* **Data.Bits and Data.Word:**
+### Data Manipulation and Conversion
 
-  * For bitwise operations required in parsing addresses.
+* **Data.Text**
+  Essential for text processing.
+* **Data.ByteString and Data.ByteString.Base16**
+  Handle binary data manipulation and hexadecimal encoding/decoding.
+* **Data.Bits and Data.Word**
+  For bitwise operations required in parsing addresses.
 
-### Crypto and Builtin Types:
+### Crypto and Builtin Types
 
-* **Plutus.V1.Ledger.Crypto:**
+* **Plutus.V1.Ledger.Crypto**
+  Provides cryptographic types like `PubKeyHash`.
+* **PlutusTx.Builtins.Class**
+  Facilitates conversion to Plutus built-in types.
 
-  * Provides cryptographic types like `PubKeyHash`.
-* **PlutusTx.Builtins.Class:**
+---
 
-  * Facilitates conversion to Plutus built-in types.
-
-## 2. Core Functions and Types
+## 2. ⚙️ Core Functions and Types
 
 ### Address Extraction and Conversion
 
-* **bech32ToPubKeyHash:**
+* **`bech32ToPubKeyHash`**
+  Decodes a Shelley-style Bech32 address to its payment `PubKeyHash`.
 
-  * Decodes a Shelley-style Bech32 address to its payment `PubKeyHash`.
-
-* **decodeBech32Address:**
-
-  * Decodes addresses, distinguishing between enterprise and base addresses.
+* **`decodeBech32Address`**
+  Decodes addresses, distinguishing between enterprise and base addresses.
 
 ### Address Construction
 
-* **pkhToAddrB32:**
+* **`pkhToAddrB32`**
+  Constructs a Bech32 enterprise address from a `PubKeyHash`.
 
-  * Constructs a Bech32 enterprise address from a `PubKeyHash`.
+* **`pkhToAddrB32Opt`**
+  Constructs a Bech32 address with optional parameters (HRP and network ID).
 
-* **pkhToAddrB32Opt:**
+* **`pkhToAddrB32Testnet` / `pkhToAddrB32Mainnet`**
+  Convenience functions for testnet or mainnet address creation.
 
-  * Constructs a Bech32 address with optional parameters (HRP and network ID).
+* **`rebuildBaseAddress`**
+  Reconstructs a base address from payment and stake credentials.
 
-* **pkhToAddrB32Testnet/Mainnet:**
+---
 
-  * Convenience functions for testnet or mainnet address creation.
+## 3. 🧱 Data Type: `AddressInfo`
 
-* **rebuildBaseAddress:**
+* Represents parsed address information.
+* Distinguishes between:
 
-  * Reconstructs a base address from payment and stake credentials.
+  * **EnterpriseAddr**: Payment credential only
+  * **BaseAddr**: Both payment and stake credentials
 
-## 3. Data Type
+---
 
-* **AddressInfo:**
-
-  * Represents parsed address information, distinguishing between enterprise and base addresses with respective credentials.
-
-## 4. Practical Usage Examples
+## 4. 🧪 Practical Usage Examples
 
 ```haskell
 -- Decode Bech32 address to PubKeyHash
@@ -81,256 +99,167 @@ case pkhToAddrB32Testnet "659ad08ff1..." of
   Right addr -> print addr
 ```
 
-## 5. Testing Strategy
+---
+
+## 5. 🧷 Testing Strategy
 
 * Utilize rigorous unit testing for address decoding and construction scenarios.
 * Validate round-trip conversions of addresses to ensure fidelity.
 * Regularly verify handling of incorrect inputs to ensure error handling robustness.
 
-## 6. Best Practices
+---
+
+## 6. ✅ Best Practices
 
 * Always handle potential errors explicitly and provide meaningful messages.
 * Document clearly any supported or unsupported address formats.
 * Conduct comprehensive testing to prevent regressions and maintain robustness.
 
-## 7. Summary
-
-Here's a detailed and structured explanation of each component within the `CGPlutusUtilsv1.hs` module, enriched with clear source-code examples to illustrate usage.
-
 ---
 
-# Detailed Explanation of `CGPlutusUtilsv1.hs`
-
-This module provides utility functions to interact with Shelley-style Bech32 addresses and public key hashes (PKHs) within Cardano Plutus smart contracts.
-
----
-
-## 1. Language Extensions
+## 7. 📘 Language Extensions
 
 ```haskell
 {-# LANGUAGE OverloadedStrings #-}
 ```
 
-* **OverloadedStrings:** Allows strings literals (`"..."`) to be interpreted flexibly as different string-like types, such as `Text` or `ByteString`.
+* Enables string literals to flexibly work with `Text` or `ByteString`.
 
 ---
 
-## 2. Imports and Their Usage
+## 8. 🔍 Imports and Their Usage
 
-### Codec.Binary.Bech32
-
-```haskell
-import Codec.Binary.Bech32
-  ( encodeLenient
-  , dataPartFromBytes
-  , dataPartToBytes
-  , decodeLenient
-  , humanReadablePartFromText
-  )
-```
-
-* **Bech32 Encoding/Decoding:**
-  Used to encode/decode Cardano addresses, crucial for interpreting and constructing addresses on-chain and off-chain.
-
-### Data Types and Utilities
+### Bech32
 
 ```haskell
-import qualified Data.Text                  as T
-import           Data.Bits                  ((.|.), (.&.), shiftL, shiftR)
-import           Data.Word                  (Word8)
-import qualified Data.ByteString            as BS
-import qualified Data.ByteString.Char8      as C
-import qualified Data.ByteString.Base16     as B16
+import Codec.Binary.Bech32 (...)
 ```
 
-* **Text and ByteString:** Commonly used to handle binary and textual data.
-* **Bitwise Operations:** For assembling and disassembling address headers.
+* Used for encoding and decoding Shelley addresses.
 
-### Plutus Ledger and Builtins
+### Data Types & Utilities
 
 ```haskell
-import qualified Plutus.V1.Ledger.Crypto    as Crypto
-import qualified PlutusTx.Builtins.Class    as Builtins
+import qualified Data.Text as T
+import           Data.Bits ((.|.), (.&.), shiftL, shiftR)
+import           Data.Word (Word8)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base16 as B16
 ```
 
-* **Crypto.PubKeyHash:** Represents a hashed public key used to authenticate transactions.
-* **Builtins.toBuiltin:** Converts standard ByteStrings to Plutus on-chain ByteStrings.
+* Manages binary manipulation and string conversion.
+
+### Plutus Integration
+
+```haskell
+import qualified Plutus.V1.Ledger.Crypto as Crypto
+import qualified PlutusTx.Builtins.Class as Builtins
+```
+
+* Bridges custom utilities with Plutus ledger types.
 
 ---
 
-## 3. Functions and Types Explained with Examples
+## 9. 📖 Function Definitions and Examples
 
 ### `bech32ToPubKeyHash`
-
-Extracts a public key hash from a Shelley-style Bech32 address.
-
-**Source Code:**
 
 ```haskell
 bech32ToPubKeyHash :: String -> Either String Crypto.PubKeyHash
 ```
 
-**Example:**
-
-```haskell
-bech32ToPubKeyHash "addr_test1vq0hjvh...xyz"
-```
+* Converts a valid Shelley Bech32 address into a `PubKeyHash`.
 
 ---
 
-### Address Construction Functions
-
-#### `pkhToAddrB32`
-
-Constructs an enterprise-style Bech32 address from a given public key hash and network settings.
-
-**Source Code:**
+### `pkhToAddrB32`
 
 ```haskell
 pkhToAddrB32 :: String -> Word8 -> String -> Either String String
 ```
 
-**Parameters:**
-
-* HRP (human-readable part): "addr" for mainnet or "addr\_test" for testnet.
-* Network identifier: `0` for testnet, `1` for mainnet.
-* Public key hash in hexadecimal.
-
-**Example:**
+* Example:
 
 ```haskell
-pkhToAddrB32 "addr_test" 0 "659ad08ff173857842dc6f8bb0105253b9713d2e5e370ccb880d6d50"
+pkhToAddrB32 "addr_test" 0 "659ad08ff1..."
 ```
 
 ---
 
-#### `pkhToAddrB32Opt`
-
-Similar to `pkhToAddrB32`, but with optional parameters for flexibility.
-
-**Source Code:**
+### `pkhToAddrB32Opt`
 
 ```haskell
 pkhToAddrB32Opt :: Maybe String -> Maybe Word8 -> String -> Either String String
 ```
 
-**Example:**
-
-```haskell
--- Using defaults (addr_test, testnet)
-pkhToAddrB32Opt Nothing Nothing "659ad08ff173857842dc6f8bb0105253b9713d2e5e370ccb880d6d50"
-
--- Specifying HRP explicitly
-pkhToAddrB32Opt (Just "addr") (Just 1) "659ad08ff173857842dc6f8bb0105253b9713d2e5e370ccb880d6d50"
-```
+* Flexible construction with optional HRP and network ID.
 
 ---
 
-#### `pkhToAddrB32Testnet` & `pkhToAddrB32Mainnet`
+### `pkhToAddrB32Testnet` & `pkhToAddrB32Mainnet`
 
-Convenient wrappers for creating testnet/mainnet addresses.
-
-**Example:**
-
-```haskell
-pkhToAddrB32Testnet "659ad08ff173857842dc6f8bb0105253b9713d2e5e370ccb880d6d50"
-
-pkhToAddrB32Mainnet "659ad08ff173857842dc6f8bb0105253b9713d2e5e370ccb880d6d50"
-```
+* Wrapper functions for simplified address creation on testnet and mainnet.
 
 ---
 
-### Address Decoding
+### `decodeBech32Address`
 
-#### `decodeBech32Address`
-
-Decodes Shelley-style Bech32 addresses, extracting payment and staking credentials if present.
-
-**Address Types Supported:**
-
-* Enterprise address (payment credential only)
-* Base address (payment and stake credentials)
-
-**Data type returned:**
-
-```haskell
-data AddressInfo
-  = EnterpriseAddr Crypto.PubKeyHash
-  | BaseAddr Crypto.PubKeyHash BS.ByteString
-  deriving Show
-```
-
-**Example:**
-
-```haskell
-decodeBech32Address "addr_test1vq0hjvh...xyz"
--- returns EnterpriseAddr or BaseAddr with credentials
-```
+* Returns `EnterpriseAddr` or `BaseAddr` with credential breakdown.
 
 ---
 
 ### `rebuildBaseAddress`
 
-Rebuilds a complete base address from payment and stake credential hashes.
-
-**Source Code:**
-
 ```haskell
 rebuildBaseAddress
-  :: String
-  -> Word8
-  -> Word8
-  -> BS.ByteString
-  -> BS.ByteString
-  -> Either String String
+  :: String -> Word8 -> Word8 -> BS.ByteString -> BS.ByteString -> Either String String
 ```
 
-**Parameters Explained:**
-
-* HRP ("addr" for mainnet, "addr\_test" for testnet)
-* Address type (0 = key/key, 1 = key/script)
-* Network identifier (0=testnet, 1=mainnet)
-* Payment key hash (28 bytes)
-* Stake credential hash (28 bytes)
-
-**Example:**
-
-```haskell
-rebuildBaseAddress "addr_test" 0 0 payKeyHashBytes stakeKeyHashBytes
-```
+* Builds a full base address using raw credential bytes.
 
 ---
 
-## 4. Practical Workflow Example
+## 10. 🛠️ Practical Workflow Examples
 
-### Converting Hex Public Key Hash to Testnet Address:
+### Convert Hex PKH to Testnet Address
 
 ```haskell
-let pkhHex = "659ad08ff173857842dc6f8bb0105253b9713d2e5e370ccb880d6d50"
+let pkhHex = "659ad08ff173857842..."
 case pkhToAddrB32Testnet pkhHex of
   Left err -> putStrLn $ "Error: " ++ err
   Right addr -> putStrLn $ "Testnet address: " ++ addr
 ```
 
-### Decoding a Bech32 Address to extract PKH:
+---
+
+### Decode Bech32 Address
 
 ```haskell
-let address = "addr_test1vq0hjvh...xyz"
+let address = "addr_test1vq0hjvh..."
 case decodeBech32Address address of
   Left err -> putStrLn $ "Error: " ++ err
-  Right (EnterpriseAddr pkh) -> putStrLn $ "Payment PKH: " ++ show pkh
-  Right (BaseAddr pkh stakeCred) -> do
-    putStrLn $ "Payment PKH: " ++ show pkh
-    putStrLn $ "Stake credential: " ++ show stakeCred
+  Right (EnterpriseAddr pkh) -> print pkh
+  Right (BaseAddr pkh stake) -> do
+    print pkh
+    print stake
 ```
 
 ---
 
-## 5. Best Practices Summary:
+## 11. 📘 Glossary of Terms
 
-* Always validate the input lengths and formats when decoding addresses.
-* Clearly handle both enterprise and base address scenarios in your code.
-* Use convenience functions (`pkhToAddrB32Testnet`, `pkhToAddrB32Mainnet`) for common use-cases.
+| Term                          | Definition                                                        |
+| ----------------------------- | ----------------------------------------------------------------- |
+| **Bech32**                    | Human-readable address encoding used in Cardano.                  |
+| **Enterprise Address**        | Contains only payment credential.                                 |
+| **Base Address**              | Contains both payment and staking credentials.                    |
+| **PubKeyHash (PKH)**          | Hash of a public key; used to identify wallets.                   |
+| **HRP (Human-Readable Part)** | Prefix in a Bech32 address (e.g., `addr`, `addr_test`).           |
+| **Shelley Address**           | A Bech32-format address introduced in the Shelley era of Cardano. |
+| **Plutus Builtin Types**      | Low-level types used in on-chain Plutus smart contracts.          |
+| **ByteString**                | Binary string representation used for hashes and credentials.     |
+| **Stake Credential**          | Optional part of a base address, enables staking rewards.         |
+| **Word8**                     | 8-bit unsigned integer used for address flags and network IDs.    |
 
 ---
 

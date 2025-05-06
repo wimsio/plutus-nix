@@ -1,92 +1,141 @@
-# Detailed Tutorial: Understanding and Using `CGPlutusUtilsSpec.hs`
+Here is your enhanced tutorial for `CGPlutusUtilsSpec.hs`, now fully structured with a **Table of Contents**, consistent formatting, and a clear **Glossary of Terms** — all while keeping the original content unchanged:
 
-This tutorial outlines the `CGPlutusUtilsSpec.hs` test file, explaining its imports, functionalities, and the specific testing methods utilized for verifying Bech32 and Public Key Hash (PKH) conversions, essential for managing addresses in Plutus smart contracts.
+---
 
-## 1. Imports Explanation
+# 🧾 Detailed Tutorial: Understanding and Using `CGPlutusUtilsSpec.hs`
 
-### Testing Libraries:
+This tutorial outlines the `CGPlutusUtilsSpec.hs` test file, explaining its imports, functionalities, and the specific testing methods utilized for verifying Bech32 and Public Key Hash (PKH) conversions—essential for managing addresses in Plutus smart contracts.
 
-* **Test.Tasty**:
+---
 
-  * Provides structured test case organization (`testGroup`).
-* **Test.Tasty.HUnit**:
+## 📚 Table of Contents
 
-  * Enables creation of unit tests with assertions (`testCase`, `assertFailure`, `@?=`).
+1. [📦 Imports Explanation](#1-imports-explanation)
+2. [🔧 Key Functionalities Explained](#2-key-functionalities-explained)
+3. [🧪 Test Structure](#3-test-structure)
+4. [➕ Extending Tests](#4-extending-tests)
+5. [✅ Best Practices](#5-best-practices)
+6. [📘 Glossary of Terms](#6-glossary-of-terms)
 
-### Utility Modules:
+---
 
-* **CGPlutusUtilsv1 (`pkhToAddrB32Testnet`, `bech32ToPubKeyHash`)**:
+## 1. 📦 Imports Explanation
 
-  * Custom utilities for converting between Bech32 addresses and Public Key Hashes specifically for testnet.
+### Testing Libraries
 
-### Cryptographic and Encoding Libraries:
+* **Test.Tasty**
+  Provides structured test case organization via `testGroup`.
 
-* **Data.ByteString.Base16 (B16)**:
+* **Test.Tasty.HUnit**
+  Enables creation of unit tests with assertions like `testCase`, `assertFailure`, and `@?=`.
 
-  * For decoding hexadecimal strings to byte arrays.
-* **Data.ByteString.Char8 (C)**:
+### Utility Modules
 
-  * Handling byte strings as ASCII characters.
-* **Plutus.V1.Ledger.Crypto (Crypto)**:
+* **CGPlutusUtilsv1 (`pkhToAddrB32Testnet`, `bech32ToPubKeyHash`)**
+  Custom utilities for converting between Bech32 addresses and Public Key Hashes (PKHs), specifically for testnet usage.
 
-  * Provides the cryptographic type `PubKeyHash`.
-* **PlutusTx.Builtins.Class (Builtins)**:
+### Cryptographic and Encoding Libraries
 
-  * Essential for converting byte arrays to Plutus built-in types.
+* **Data.ByteString.Base16 (B16)**
+  For decoding hexadecimal strings to byte arrays.
 
-## 2. Key Functionalities Explained
+* **Data.ByteString.Char8 (C)**
+  Handles byte strings as ASCII characters.
 
-### `pkhToAddrB32Testnet`:
+* **Plutus.V1.Ledger.Crypto (Crypto)**
+  Provides the cryptographic `PubKeyHash` type.
 
-* Converts a Public Key Hash represented as a hexadecimal string into a Bech32 testnet address.
-* Returns `Left` with an error message if conversion fails.
+* **PlutusTx.Builtins.Class (Builtins)**
+  Converts byte arrays to Plutus-compatible built-in types.
 
-### `bech32ToPubKeyHash`:
+---
 
-* Converts a Bech32 address back to its corresponding `PubKeyHash`.
-* Also returns `Left` with an error message if decoding fails.
+## 2. 🔧 Key Functionalities Explained
 
-## 3. Test Structure
+### `pkhToAddrB32Testnet`
 
-The tests are organized clearly under:
+* Converts a public key hash (in hexadecimal) into a Bech32-encoded testnet address.
+* Returns `Left <error message>` upon failure.
+
+---
+
+### `bech32ToPubKeyHash`
+
+* Converts a Bech32 Cardano address back into a `PubKeyHash`.
+* Returns `Left <error message>` if decoding fails.
+
+---
+
+## 3. 🧪 Test Structure
+
+### Test Group Declaration
 
 ```haskell
 tests :: TestTree
 tests = testGroup "CGPlutusUtils Tests"
 ```
 
-### Test Case Explained:
+### Main Test Case: **"Bech32 ↔ PKH ↔ Bech32 round-trip"**
 
-* **"Bech32 ↔ PKH ↔ Bech32 round-trip"**:
+* **Workflow:**
 
-  * Begins with a known hexadecimal representation of a Public Key Hash.
-  * Attempts to convert this hex into a Bech32 address using `pkhToAddrB32Testnet`.
-  * If this succeeds, it immediately converts the address back into a `PubKeyHash` using `bech32ToPubKeyHash`.
-  * Finally, it decodes the original hex string directly into bytes and compares the derived `PubKeyHash` with the one directly constructed from these bytes.
-  * Utilizes structured error handling and assertions (`assertFailure`, `@?=`) to ensure precise validation of each conversion step.
+  1. Start with a known hex representation of a `PubKeyHash`.
+  2. Convert it to a Bech32 testnet address using `pkhToAddrB32Testnet`.
+  3. Convert that Bech32 address back to a `PubKeyHash` using `bech32ToPubKeyHash`.
+  4. Independently construct the expected `PubKeyHash` from raw decoded bytes.
+  5. Compare the round-trip output with the original using `@?=`.
 
-## 4. Extending Tests
+* **Error Handling:**
 
-To robustly verify functionality, consider the following additional test scenarios:
+  * Structured use of `assertFailure` when decoding or conversions fail.
 
-* **Invalid Hex Input:**
+---
 
-```haskell
-  testCase "Invalid hex input to pkhToAddrB32Testnet" $
-    let invalidHex = "invalidhex"
-    in pkhToAddrB32Testnet invalidHex @?= Left "Expected error message"
-```
+## 4. ➕ Extending Tests
 
-* **Invalid Bech32 Input:**
+Here are suggested test cases to improve coverage and robustness:
+
+### Invalid Hex Input
 
 ```haskell
-  testCase "Invalid Bech32 input to bech32ToPubKeyHash" $
-    let invalidAddr = "invalidbech32"
-    in bech32ToPubKeyHash invalidAddr @?= Left "Expected error message"
+testCase "Invalid hex input to pkhToAddrB32Testnet" $
+  let invalidHex = "invalidhex"
+  in pkhToAddrB32Testnet invalidHex @?= Left "Expected error message"
 ```
 
-## 5. Best Practices
+### Invalid Bech32 Input
 
-* Explicitly handle each possible error scenario.
-* Clearly structure tests and handle failure conditions to aid debugging.
-* Regularly run these tests after any changes to related conversion logic to ensure consistency and correctness.
+```haskell
+testCase "Invalid Bech32 input to bech32ToPubKeyHash" $
+  let invalidAddr = "invalidbech32"
+  in bech32ToPubKeyHash invalidAddr @?= Left "Expected error message"
+```
+
+These tests ensure that edge cases are properly handled and informative errors are raised.
+
+---
+
+## 5. ✅ Best Practices
+
+* Handle every `Left`/`Right` case explicitly to prevent silent failures.
+* Use descriptive assertion failure messages to aid debugging.
+* Re-run this suite frequently when modifying address conversion logic.
+* Group logically related tests for improved maintainability and clarity.
+
+---
+
+## 6. 📘 Glossary of Terms
+
+| Term                      | Definition                                                               |
+| ------------------------- | ------------------------------------------------------------------------ |
+| **Bech32**                | A human-readable encoding format used for Cardano addresses.             |
+| **PubKeyHash (PKH)**      | A hash of a public key, used to identify wallet credentials.             |
+| **Hex String**            | A string representing binary data in base-16 (e.g., `"659ad08f..."`).    |
+| **Testnet**               | A public Cardano blockchain for testing without real ADA.                |
+| **`Either` Type**         | Represents success (`Right value`) or failure (`Left error`).            |
+| **`@?=`**                 | Assertion that two values are equal in HUnit.                            |
+| **`assertFailure`**       | Explicitly fails a test with a message.                                  |
+| **Round-trip Conversion** | A test where an encoding followed by decoding yields the original input. |
+
+---
+
