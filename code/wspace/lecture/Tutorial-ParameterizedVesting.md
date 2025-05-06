@@ -332,9 +332,7 @@ saveVal params
 
 ---
 
-## 9. Testing ParameterizedVesting.hs mini-tutorial
-
-# Tutorial: Using `import`, `:load`, and Testing `VestingParams` in `cabal repl`
+## 9. Tutorial: Using `import`, `:load`, and Testing `VestingParams` in `cabal repl`
 
 This tutorial walks you through how to:
 - Load multiple modules in `cabal repl`
