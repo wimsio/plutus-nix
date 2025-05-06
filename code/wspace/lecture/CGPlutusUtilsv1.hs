@@ -6,6 +6,9 @@ module CGPlutusUtilsv1
   , pkhToAddrB32Opt
   , pkhToAddrB32Testnet
   , pkhToAddrB32Mainnet
+  , decodeBech32Address
+  , AddressInfo(..)
+  , rebuildBaseAddress
   ) where
 
 import Codec.Binary.Bech32
@@ -24,8 +27,11 @@ import qualified Data.ByteString.Base16     as B16
 import qualified Plutus.V1.Ledger.Crypto    as Crypto
 import qualified PlutusTx.Builtins.Class    as Builtins
 
--- | Decode a Shelley‑style Bech32 address to its payment PubKeyHash.
---   Only supports key‑based addresses (types 0,1,6).
+--------------------------------------------------------------------------------
+-- Simple Bech32 Address to PubKeyHash Extractor (only payment key)
+--------------------------------------------------------------------------------
+
+-- | Decode Shelley-style Bech32 address to its payment PubKeyHash.
 bech32ToPubKeyHash :: String -> Either String Crypto.PubKeyHash
 bech32ToPubKeyHash addrStr = do
   (_, dp) <- case decodeLenient (T.pack addrStr) of
@@ -44,14 +50,55 @@ bech32ToPubKeyHash addrStr = do
         then if BS.length payload >= 28
           then let pkhBytes = BS.take 28 payload
                in Right $ Crypto.PubKeyHash $ Builtins.toBuiltin pkhBytes
-          else Left "Payload too short for a 28‑byte PubKeyHash"
+          else Left "Payload too short for a 28-byte PubKeyHash"
         else Left $ "Unsupported address type (header nibble = " ++ show addrType ++ ")"
 
--- | Convert a hex‑encoded 28‑byte PubKeyHash into a Shelley Bech32 enterprise address.
+--------------------------------------------------------------------------------
+-- Round-trip decoder for payment + stake credentials
+--------------------------------------------------------------------------------
+
+-- | Extended address decoder that handles enterprise and base addresses.
+data AddressInfo
+  = EnterpriseAddr Crypto.PubKeyHash
+  | BaseAddr Crypto.PubKeyHash BS.ByteString  -- ^ stake credential (28 bytes)
+  deriving Show
+
+decodeBech32Address :: String -> Either String AddressInfo
+decodeBech32Address addrStr = do
+  (_, dp) <- case decodeLenient (T.pack addrStr) of
+    Left err -> Left $ "Bech32 decode error: " ++ show err
+    Right d  -> Right d
+
+  raw <- maybe (Left "Invalid Bech32 data part") Right (dataPartToBytes dp)
+  case BS.uncons raw of
+    Nothing -> Left "Empty address payload"
+    Just (hdr, rest) ->
+      let addrType = hdr `shiftR` 4 in
+      case addrType of
+        0 -> parseBase rest
+        1 -> parseBase rest
+        6 -> parseEnterprise rest
+        _ -> Left $ "Unsupported address type (header nibble = " ++ show addrType ++ ")"
+  where
+    parseEnterprise bs =
+      if BS.length bs >= 28
+        then Right $ EnterpriseAddr (Crypto.PubKeyHash $ Builtins.toBuiltin (BS.take 28 bs))
+        else Left "Payload too short for enterprise address"
+    parseBase bs =
+      if BS.length bs >= 56
+        then let (pay, stake) = BS.splitAt 28 bs
+              in Right $ BaseAddr (Crypto.PubKeyHash $ Builtins.toBuiltin pay) stake
+        else Left "Payload too short for base address"
+
+--------------------------------------------------------------------------------
+-- Bech32 address construction
+--------------------------------------------------------------------------------
+
+-- | Construct enterprise address from PubKeyHash.
 pkhToAddrB32
   :: String   -- ^ HRP (e.g. "addr", "addr_test")
   -> Word8    -- ^ network nibble (0=test, 1=main)
-  -> String   -- ^ hex‑encoded PubKeyHash (56 hex chars)
+  -> String   -- ^ hex-encoded PubKeyHash (56 hex chars)
   -> Either String String
 pkhToAddrB32 hrpStr netId hexStr =
   case B16.decode (C.pack hexStr) of
@@ -86,4 +133,20 @@ pkhToAddrB32Testnet = pkhToAddrB32 "addr_test" 0
 -- | Shortcut for mainnet: HRP="addr", netId=1.
 pkhToAddrB32Mainnet :: String -> Either String String
 pkhToAddrB32Mainnet = pkhToAddrB32 "addr" 1
+
+-- | Reconstruct a base address from its components.
+rebuildBaseAddress
+  :: String      -- ^ HRP (e.g. "addr", "addr_test")
+  -> Word8       -- ^ Address type: 0=key/key, 1=key/script
+  -> Word8       -- ^ Network id (0 or 1)
+  -> BS.ByteString  -- ^ 28-byte payment key hash
+  -> BS.ByteString  -- ^ 28-byte stake credential
+  -> Either String String
+rebuildBaseAddress hrpStr addrType netId payKeyHash stakeCred = do
+  hrp <- either (Left . show) Right $ humanReadablePartFromText (T.pack hrpStr)
+  let hdr     = (addrType `shiftL` 4) .|. (netId .&. 0x0F)
+      payload = BS.cons hdr (payKeyHash <> stakeCred)
+      dp      = dataPartFromBytes payload
+  return $ T.unpack $ encodeLenient hrp dp
+
 

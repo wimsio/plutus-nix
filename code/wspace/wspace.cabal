@@ -39,9 +39,15 @@ common common-all
 
 common common-all-tests
     import:           common-all
-    build-depends:    QuickCheck,
-                      tasty,
-                      plutus-simple-model
+    build-depends:
+      QuickCheck,
+      tasty,
+      tasty-hunit,
+      bytestring,
+      base16-bytestring,
+      plutus-simple-model,
+      plutus-ledger-api
+    default-language: Haskell2010
 
 library
     import:             common-all
@@ -62,21 +68,15 @@ executable vesting-exe
         wspace,
         utilities
     default-language:   Haskell2010
+
 test-suite wspace-tests
+    import:              common-all-tests
     type:                exitcode-stdio-1.0
     hs-source-dirs:      tests
     main-is:             Spec.hs
     build-depends:
-      base >=4.14 && <4.15,
       wspace,
-      utilities,
-      tasty,
-      tasty-hunit,
-      QuickCheck,
-      bytestring,
-      base16-bytestring,
-      plutus-ledger-api,
-      plutus-tx
+      utilities
     other-modules:
       CGPlutusUtilsSpec
       CGTimeSpec
