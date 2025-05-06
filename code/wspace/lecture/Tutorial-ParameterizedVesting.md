@@ -331,3 +331,115 @@ saveVal params
 4. **Deploy:** Deploy the script to the Cardano blockchain and interact with it via off-chain code.
 
 ---
+
+## 9. Testing ParameterizedVesting.hs mini-tutorial
+
+# Tutorial: Using `import`, `:load`, and Testing `VestingParams` in `cabal repl`
+
+This tutorial walks you through how to:
+- Load multiple modules in `cabal repl`
+- Import and access functions across modules
+- Correctly define `VestingParams` using `PubKeyHash` and `POSIXTime`
+- Serialize the validator to a `.plutus` file
+
+---
+
+## 1. Launching `cabal repl`
+
+Navigate to your project directory:
+```bash
+cd ~/plutus-nix/code
+cabal repl
+```
+
+---
+
+## 2. Loading Multiple Modules
+
+To load multiple modules:
+```haskell
+:load ParameterizedVesting CGPlutusUtilsv1 CGTime Vesting
+```
+
+Now GHCi loads all four modules for use.
+
+---
+
+## 3. Importing Functions After Load
+
+If some functions still aren't recognized, you can import the modules explicitly:
+```haskell
+import ParameterizedVesting
+import CGPlutusUtilsv1
+import CGTime
+import Vesting
+```
+
+If you want to use a specific name and avoid conflicts:
+```haskell
+import qualified CGTime
+```
+
+---
+
+## 4. Creating a `PubKeyHash` from a Bech32 Address
+
+Use the Bech32 testnet address and extract the public key hash:
+```haskell
+let Right pkh = bech32ToPubKeyHash "addr_test1qp..."
+```
+
+Make sure you bind with `Right pkh =` to safely unwrap `Either`.
+
+---
+
+## 5. Getting the Deadline as `POSIXTime`
+
+The function `getPOSIXNow` from `CGTime` gives the current system time.
+However, its result must be converted to Plutus-compatible `POSIXTime`.
+
+```haskell
+import Plutus.V1.Ledger.Time (POSIXTime(..))
+dd' <- CGTime.getPOSIXNow
+let deadline = POSIXTime (floor dd')
+```
+
+---
+
+## 6. Creating Vesting Parameters
+
+Now create the `VestingParams`:
+
+```haskell
+let vp = VestingParams pkh deadline
+```
+
+You can inspect the object using `:t vp` or `print vp`.
+
+---
+
+## 7. Saving the Plutus Script
+
+Use `saveVal` to serialize the contract:
+```haskell
+saveVal vp
+```
+
+This writes the compiled script to:
+```text
+./assets/parameterized-vesting.plutus
+```
+
+---
+
+## Troubleshooting
+
+- **Module Not in Scope**: Use `:load` to bring it in or add to `.cabal` dependencies.
+- **Type Mismatch**: Use `POSIXTime (floor time)` to convert from system types.
+- **Name Shadowing**: Rename conflicting variables or use qualified imports.
+
+---
+
+With this workflow, you can reliably load, test, and serialize parameterized Plutus contracts in GHCi.
+
+

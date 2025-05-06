@@ -18,13 +18,13 @@ import           PlutusTx                  (applyCode, compile, liftCode,
 import           PlutusTx.Prelude          (Bool, traceIfFalse, ($), (&&), (.))
 import Prelude (String)
 import           Prelude                   (IO)
-import           Utilities                 (wrapValidator, writeValidatorToFile,posixTimeFromIso8601)
+import           Utilities                 (wrapValidator, writeValidatorToFile)
 
 import Plutus.V1.Ledger.Crypto (PubKeyHash(..))
 import qualified PlutusTx.Builtins.Class as Builtins
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Base16 as B16
-import Prelude (String, Either(..), (++), error)
+import Prelude ( Either(..), (++), error)
 
 ---------------------------------------------------------------------------------------------------
 ----------------------------------- ON-CHAIN / VALIDATOR ------------------------------------------
