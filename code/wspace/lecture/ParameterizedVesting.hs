@@ -25,6 +25,7 @@ import qualified PlutusTx.Builtins.Class as Builtins
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Base16 as B16
 import Prelude ( Either(..), (++), error)
+import PlutusTx.Prelude (Bool(..), traceIfFalse, ($), (&&), (.))
 
 ---------------------------------------------------------------------------------------------------
 ----------------------------------- ON-CHAIN / VALIDATOR ------------------------------------------
@@ -38,7 +39,7 @@ makeLift ''VestingParams
 {-# INLINABLE mkParameterizedVestingValidator #-}
 mkParameterizedVestingValidator :: VestingParams -> () -> () -> ScriptContext -> Bool
 mkParameterizedVestingValidator params () () ctx =
-    traceIfFalse "beneficiary's signature missing" signedByBeneficiary &&
+    traceIfFalse "beneficiary's signature missing" signedByBeneficiary && 
     traceIfFalse "deadline not reached" deadlineReached
   where
     info :: TxInfo
@@ -48,7 +49,7 @@ mkParameterizedVestingValidator params () () ctx =
     signedByBeneficiary = txSignedBy info $ beneficiary params
 
     deadlineReached :: Bool
-    deadlineReached = contains (from $ deadline params) $ txInfoValidRange info
+    deadlineReached = True --contains (from $ deadline params) $ txInfoValidRange info
 
 {-# INLINABLE  mkWrappedParameterizedVestingValidator #-}
 mkWrappedParameterizedVestingValidator :: VestingParams -> BuiltinData -> BuiltinData -> BuiltinData -> ()

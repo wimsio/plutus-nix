@@ -32,8 +32,8 @@ unstableMakeIsData ''VestingDatum
 
 {-# INLINABLE mkVestingValidator #-}
 mkVestingValidator :: VestingDatum -> () -> ScriptContext -> Bool
-mkVestingValidator dat () ctx = traceIfFalse "beneficiary's signature missing" signedByBeneficiary &&
-                                traceIfFalse "deadline not reached" deadlineReached
+mkVestingValidator dat () ctx = traceIfFalse "beneficiary's signature missing" signedByBeneficiary && traceIfFalse "deadline not reached" deadlineReached
+
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
