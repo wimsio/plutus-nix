@@ -10,7 +10,7 @@ import           Plutus.V1.Ledger.Interval (contains)
 import           Plutus.V2.Ledger.Api      (BuiltinData, POSIXTime, PubKeyHash,
                                             ScriptContext (scriptContextTxInfo),
                                             TxInfo (txInfoValidRange),
-                                            Validator, from, mkValidatorScript)
+                                            Validator, from, to, mkValidatorScript)
 import           Plutus.V2.Ledger.Contexts (txSignedBy)
 import           PlutusTx                  (compile, unstableMakeIsData)
 import           PlutusTx.Prelude          (Bool, traceIfFalse, ($), (&&))
@@ -43,6 +43,7 @@ mkVestingValidator dat () ctx = traceIfFalse "beneficiary's signature missing" s
 
     deadlineReached :: Bool
     deadlineReached = contains (from $ deadline dat) $ txInfoValidRange info
+    --deadlineReached = txInfoValidRange info `contains` from (deadline dat)
 
 {-# INLINABLE  mkWrappedVestingValidator #-}
 mkWrappedVestingValidator :: BuiltinData -> BuiltinData -> BuiltinData -> ()

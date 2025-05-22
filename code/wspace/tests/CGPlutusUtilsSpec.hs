@@ -11,7 +11,7 @@ import qualified PlutusTx.Builtins.Class    as Builtins
 
 tests :: TestTree
 tests = testGroup "CGPlutusUtils Tests"
-  [ testCase "Bech32 ↔ PKH ↔ Bech32 round‑trip" $ do
+  [ testCase  "Bech32 round-trip test"  $ do
       let hex = "659ad08ff173857842dc6f8bb0105253b9713d2e5e370ccb880d6d50"
       case pkhToAddrB32Testnet hex of
         Left err -> assertFailure $ "pkhToAddrB32Testnet failed: " ++ err

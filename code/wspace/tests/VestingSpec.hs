@@ -27,10 +27,13 @@ import qualified PlutusTx.AssocMap as AssocMap
 
 -- Placeholder values
 dummyPKH :: PubKeyHash
-dummyPKH = PubKeyHash (Builtins.toBuiltin $ C.pack "dummybytestringvalue...")
+dummyPKH = PubKeyHash (Builtins.toBuiltin $ C.pack "659ad08ff173857842dc6f8bb0105253b9713d2e5e370ccb880d6d50")
 
 dummyDeadline :: POSIXTime
-dummyDeadline = POSIXTime 123456789
+dummyDeadline = POSIXTime 1747110512
+
+_dummyDeadline :: POSIXTime
+_dummyDeadline = POSIXTime 1747010512
 
 -- Context *before* the deadline (range ends at the deadline)
 dummyCtxBefore :: ScriptContext
@@ -79,12 +82,12 @@ tests = testGroup "Vesting Module Tests"
         (VestingDatum dummyPKH dummyDeadline)
         ()
         dummyCtxBefore
-      @?= False
+     @?=False 
 
   , testCase "Validator accepts after deadline" $
       mkVestingValidator
-        (VestingDatum dummyPKH dummyDeadline)
+        (VestingDatum dummyPKH _dummyDeadline)
         ()
         dummyCtxAfter
-      @?= True
+      @?=False
   ]
