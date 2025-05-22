@@ -29,9 +29,7 @@ From Zero to Hero Haskell Plutus Flake.nix Template
 
 ![image](https://github.com/user-attachments/assets/b6a0150c-e1cc-4fe9-91d9-46eac28deb29)
 
-![image](https://github.com/user-attachments/assets/5340de25-2726-4271-b2bb-c9fa2ea2e786)
-
-![image](https://github.com/user-attachments/assets/7747cabf-574c-451d-9be2-e4ac9a74bb6a)
+![image](https://github.com/user-attachments/assets/e6206f18-9231-42ed-8456-10a936e21b15)
 
 [Coming... Offchain Helios](https://github.com/wimsio/coxygen/wiki/Helios-Haskell-Smart-Contract-Development)
 ---
