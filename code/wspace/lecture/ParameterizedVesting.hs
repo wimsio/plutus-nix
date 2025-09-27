@@ -67,5 +67,5 @@ fromHexPKH hex =
     Right decoded -> PubKeyHash (Builtins.toBuiltin decoded)
     Left err -> error ("Hex decoding failed: " ++ err)
 
-saveVal :: VestingParams -> IO ()
-saveVal = writeValidatorToFile "./assets/parameterized-vesting.plutus" . validator
+saveValParam :: VestingParams -> IO ()
+saveValParam = writeValidatorToFile "./assets/parameterized-vesting.plutus" . validator
