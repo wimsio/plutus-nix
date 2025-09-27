@@ -57,7 +57,8 @@ library
         CGPlutusUtilsv1,
         CGTime,
         Vesting,
-        Demo
+        Demo,
+        Mint
 
 executable vesting-exe
     main-is:            Main.hs
