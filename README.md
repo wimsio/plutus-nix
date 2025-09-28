@@ -58,6 +58,8 @@ From Zero to Hero Haskell Plutus Flake.nix Template
 
 ## 2. ⚙️ Environment Setup (Nix + Flakes)
 
+### Start with # 🚀 NIX SETUP.md Tutorial (with Problems & Solutions) file in this directory
+
 > We recommend **multi-user (daemon) installs** on Linux and **WSL2** for Windows. Flakes are enabled via `NIX_CONFIG` or `/etc/nix/nix.conf`.
 
 ### 🔧 Common shell snippet (Linux/WSL)
