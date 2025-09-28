@@ -10,7 +10,7 @@ import           Plutus.V1.Ledger.Interval (contains)
 import           Plutus.V2.Ledger.Api      (BuiltinData, POSIXTime, PubKeyHash,
                                             ScriptContext (scriptContextTxInfo),
                                             TxInfo (txInfoValidRange),
-                                            Validator, from, to, mkValidatorScript)
+                                            Validator, from, mkValidatorScript)
 import           Plutus.V2.Ledger.Contexts (txSignedBy)
 import           PlutusTx                  (compile, unstableMakeIsData)
 import           PlutusTx.Prelude          (Bool, traceIfFalse, ($), (&&))

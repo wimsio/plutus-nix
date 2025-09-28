@@ -5,8 +5,6 @@ module CGTimeSpec (tests) where
 import           Test.Tasty       (TestTree, testGroup)
 import           Test.Tasty.HUnit (testCase, (@?=), assertFailure)
 
-import           Data.Text        (Text)
-import qualified Data.Text        as T
 
 import           CGTime           (iso8601ToPOSIX, posixToISO8601)
 

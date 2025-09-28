@@ -1,17 +1,25 @@
-module Main (main) where
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
-import Test.Tasty              (defaultMain, testGroup)
-import qualified VestingSpec               as VS
-import qualified ParameterizedVestingSpec  as PVS
-import qualified CGTimeSpec                as TS
-import qualified CGPlutusUtilsSpec         as US
+import Test.Tasty (defaultMain, testGroup, TestTree)
+
+import CGPlutusUtilsSpec       qualified as CGPlutusUtilsSpec
+import CGTimeSpec              qualified as CGTimeSpec
+import ParameterizedVestingSpec qualified as ParameterizedVestingSpec
+import VestingSpec             qualified as VestingSpec
+import DemoSpec                qualified as DemoSpec
+import MintSpec                qualified as MintSpec  
 
 main :: IO ()
-main = defaultMain $
-  testGroup "All wspace Tests"
-    [ VS.tests
-    , PVS.tests
-    , TS.tests
-    , US.tests
-    ]
+main = defaultMain allTests
 
+allTests :: TestTree
+allTests =
+  testGroup "All wspace Tests"
+    [ VestingSpec.tests
+    , ParameterizedVestingSpec.tests
+    , CGTimeSpec.tests
+    , CGPlutusUtilsSpec.tests
+    , DemoSpec.tests
+    , MintSpec.tests             
+    ]
