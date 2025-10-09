@@ -24,16 +24,20 @@ import           Utilities                 (Network, posixTimeFromIso8601,
 ----------------------------------- ON-CHAIN / VALIDATOR ------------------------------------------
 
 data VestingDatum = VestingDatum
-    { beneficiary :: PubKeyHash
+    { beneficiary :: PubKeyHash -- the person who will take the assets(token, nft, ada)
     , deadline    :: POSIXTime
+    , code        :: Integer
     }
 
 unstableMakeIsData ''VestingDatum
 
-{-# INLINABLE mkVestingValidator #-}
-mkVestingValidator :: VestingDatum -> () -> ScriptContext -> Bool
-mkVestingValidator dat () ctx = traceIfFalse "beneficiary's signature missing" signedByBeneficiary && traceIfFalse "deadline not reached" deadlineReached
+data Actions = Update | Cancel | Buy
 
+{-# INLINABLE mkVestingValidator #-}
+mkVestingValidator :: VestingDatum -> Actions -> ScriptContext -> Bool
+mkVestingValidator dat acts ctx = traceIfFalse "beneficiary's signature missing" signedByBeneficiary 
+&& traceIfFalse "deadline not reached" deadlineReached 
+&& traceIfFalse "Wrong code supplied " checkCode 
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
@@ -44,6 +48,9 @@ mkVestingValidator dat () ctx = traceIfFalse "beneficiary's signature missing" s
     deadlineReached :: Bool
     deadlineReached = contains (from $ deadline dat) $ txInfoValidRange info
     --deadlineReached = txInfoValidRange info `contains` from (deadline dat)
+
+    checkCode :: Bool
+    checkCode = Buy == Update acts
 
 {-# INLINABLE  mkWrappedVestingValidator #-}
 mkWrappedVestingValidator :: BuiltinData -> BuiltinData -> BuiltinData -> ()
