@@ -12,7 +12,7 @@ import           Plutus.V2.Ledger.Api      (BuiltinData, POSIXTime, PubKeyHash,
                                             TxInfo (txInfoValidRange),
                                             Validator, from, mkValidatorScript)
 import           Plutus.V2.Ledger.Contexts (txSignedBy)
-import           PlutusTx                  (compile, unstableMakeIsData)
+import           PlutusTx                  (compile, makeIsDataIndexed, unstableMakeIsData)
 import           PlutusTx.Prelude          (Bool, traceIfFalse, ($), (&&))
 import           Prelude                   (IO, String, Integer)
 import           Utilities                 (Network, posixTimeFromIso8601,
@@ -24,7 +24,7 @@ import           Utilities                 (Network, posixTimeFromIso8601,
 ----------------------------------- ON-CHAIN / VALIDATOR ------------------------------------------
 
 data VestingDatum = VestingDatum
-    { beneficiary :: PubKeyHash -- the person who will take the assets(token, nft, ada)
+    { beneficiary :: PubKeyHash
     , deadline    :: POSIXTime
     , code        :: Integer
     }
@@ -32,11 +32,13 @@ data VestingDatum = VestingDatum
 unstableMakeIsData ''VestingDatum
 
 data Actions = Update | Cancel | Buy
+PlutusTx.makeIsDataIndexed ''Actions [('Update, 0), ('Cancel, 1), ('Buy, 2)]
 
 {-# INLINABLE mkVestingValidator #-}
 mkVestingValidator :: VestingDatum -> Actions -> ScriptContext -> Bool
-mkVestingValidator dat acts ctx = traceIfFalse "beneficiary's signature missing" signedByBeneficiary && traceIfFalse "deadline not reached" deadlineReached 
-                                --  && traceIfFalse "Wrong code supplied " checkCode 
+mkVestingValidator dat _ ctx =
+  traceIfFalse "beneficiary's signature missing" signedByBeneficiary &&
+  traceIfFalse "deadline not reached" deadlineReached
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
@@ -46,12 +48,8 @@ mkVestingValidator dat acts ctx = traceIfFalse "beneficiary's signature missing"
 
     deadlineReached :: Bool
     deadlineReached = contains (from $ deadline dat) $ txInfoValidRange info
-    --deadlineReached = txInfoValidRange info `contains` from (deadline dat)
 
-    -- checkCode :: Bool
-    -- checkCode = Buy == Update acts
-
-{-# INLINABLE  mkWrappedVestingValidator #-}
+{-# INLINABLE mkWrappedVestingValidator #-}
 mkWrappedVestingValidator :: BuiltinData -> BuiltinData -> BuiltinData -> ()
 mkWrappedVestingValidator = wrapValidator mkVestingValidator
 
@@ -68,7 +66,9 @@ vestingAddressBech32 :: Network -> String
 vestingAddressBech32 network = validatorAddressBech32 network validator
 
 printVestingDatumJSON :: PubKeyHash -> String -> IO ()
-printVestingDatumJSON pkh time = printDataToJSON $ VestingDatum
+printVestingDatumJSON pkh time =
+  printDataToJSON $ VestingDatum
     { beneficiary = pkh
     , deadline    = fromJust $ posixTimeFromIso8601 time
+    , code        = 42 -- example placeholder
     }
