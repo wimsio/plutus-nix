@@ -14,7 +14,7 @@ import           Plutus.V2.Ledger.Api      (BuiltinData, POSIXTime, PubKeyHash,
 import           Plutus.V2.Ledger.Contexts (txSignedBy)
 import           PlutusTx                  (compile, unstableMakeIsData)
 import           PlutusTx.Prelude          (Bool, traceIfFalse, ($), (&&))
-import           Prelude                   (IO, String)
+import           Prelude                   (IO, String, Integer)
 import           Utilities                 (Network, posixTimeFromIso8601,
                                             printDataToJSON,
                                             validatorAddressBech32,
@@ -35,9 +35,8 @@ data Actions = Update | Cancel | Buy
 
 {-# INLINABLE mkVestingValidator #-}
 mkVestingValidator :: VestingDatum -> Actions -> ScriptContext -> Bool
-mkVestingValidator dat acts ctx = traceIfFalse "beneficiary's signature missing" signedByBeneficiary 
-&& traceIfFalse "deadline not reached" deadlineReached 
-&& traceIfFalse "Wrong code supplied " checkCode 
+mkVestingValidator dat acts ctx = traceIfFalse "beneficiary's signature missing" signedByBeneficiary && traceIfFalse "deadline not reached" deadlineReached 
+                                --  && traceIfFalse "Wrong code supplied " checkCode 
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
@@ -49,8 +48,8 @@ mkVestingValidator dat acts ctx = traceIfFalse "beneficiary's signature missing"
     deadlineReached = contains (from $ deadline dat) $ txInfoValidRange info
     --deadlineReached = txInfoValidRange info `contains` from (deadline dat)
 
-    checkCode :: Bool
-    checkCode = Buy == Update acts
+    -- checkCode :: Bool
+    -- checkCode = Buy == Update acts
 
 {-# INLINABLE  mkWrappedVestingValidator #-}
 mkWrappedVestingValidator :: BuiltinData -> BuiltinData -> BuiltinData -> ()
