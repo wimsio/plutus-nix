@@ -50,6 +50,7 @@ common common-all-tests
       directory
     default-language: Haskell2010
 
+
 library
     import:             common-all
     hs-source-dirs:     lecture
@@ -75,10 +76,13 @@ executable vesting-exe
 test-suite wspace-tests
     import:              common-all-tests
     type:                exitcode-stdio-1.0
-    hs-source-dirs:      tests
+    hs-source-dirs:      tests, lecture  
     main-is:             Spec.hs
     build-depends:
-      wspace,
+      base,
+      wspace,            
+      plutus-ledger-api,
+      plutus-tx,
       utilities
     other-modules:
       CGPlutusUtilsSpec
@@ -88,3 +92,4 @@ test-suite wspace-tests
       DemoSpec
       MintSpec
     default-language:    Haskell2010
+
