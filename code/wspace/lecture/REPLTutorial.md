@@ -1,3 +1,12 @@
+Perfect — this new structure clarifies that your project actually contains **two main components**:
+
+* a **Utilities** package (`code/Utilities`)
+* a **wspace** package (`code/wspace`) with all your Plutus tutorial and test modules.
+
+Below is your **fully corrected tutorial**, now reflecting the *exact structure* visible in your VS Code explorer.
+
+---
+
 # 🧭 **Professional Tutorial: Testing and Working with Plutus Modules in Cabal REPL (V2 Setup)**
 
 ---
@@ -9,7 +18,7 @@
 3. 🧱 [Step 1 — Understanding the Cabal Configuration](#step-1)
 4. 💻 [Step 2 — Opening the Correct Cabal REPL](#step-2)
 5. 📘 [Step 3 — Loading and Testing a Module](#step-3)
-6. 🧪 [Step 4 — Working with `AuctionTypes.hs`](#step-4)
+6. 🧪 [Step 4 — Working with `ParameterizedVesting.hs`](#step-4)
 7. 🔍 [Step 5 — Fixing Common Build Errors](#step-5)
 8. 🧠 [Step 6 — Validating with QuickCheck or Hspec](#step-6)
 9. 🧰 [Step 7 — Reloading, Debugging, and Exiting](#step-7)
@@ -19,253 +28,288 @@
 
 ## ⚙️ **1. Introduction** <a name="introduction"></a>
 
-Welcome to the **professional guide for testing Plutus smart contract modules** interactively using `cabal repl`.
-This tutorial focuses on **Plutus V2** (as defined by your `plutus-ledger-api-1.54.0.0` setup).
-You’ll learn to open, test, and debug modules like `AuctionTypes.hs` and `AuctionValidator.hs` inside REPL with zero confusion.
+Welcome to the **professional guide for interactively testing Plutus V2 smart contract modules** using `cabal repl`.
+This guide uses your **PLUTUS-NIX project setup** and walks through how to load, test, and debug scripts such as
+`ParameterizedVesting.hs`, `Mint.hs`, and your test specs.
 
-> 🧠 Think of this REPL workflow as a **playground** where you can interactively inspect Plutus types, simulate validator logic, and iterate fast before deployment.
+> 🧠 Treat `cabal repl` as your on-chain playground — perfect for compiling validators, inspecting types, and iterating fast.
 
 ---
 
 ## 🧩 **2. Project Structure Overview** <a name="project-structure"></a>
 
-Typical structure of your `plinth-template` project:
+Here’s your **exact folder structure** (from your screenshot):
 
 ```
-plinth-template/
-├── app/
-│   ├── GenAuctionValidatorBlueprint.hs
-│   └── GenMintingPolicyBlueprint.hs
-├── src/
-│   ├── AuctionTypes.hs
-│   ├── AuctionValidator.hs
-│   └── AuctionMintingPolicy.hs
-├── test/
-│   └── All.hs
-├── plinth-template.cabal
-└── cabal.project
+PLUTUS-NIX/
+├── code/
+│   ├── Utilities/
+│   │   ├── src/
+│   │   │   ├── Utilities/
+│   │   │   │   ├── Conversions.hs
+│   │   │   │   ├── PlutusTx.hs
+│   │   │   │   └── Serialise.hs
+│   │   │   └── Utilities.hs
+│   │   └── Utilities.cabal
+│   │
+│   └── wspace/
+│       ├── assets/
+│       ├── lecture/
+│       │   ├── CGPlutusUtilsv1.hs
+│       │   ├── CGTime.hs
+│       │   ├── Demo.hs
+│       │   ├── Mint.hs
+│       │   ├── ParameterizedVesting.hs
+│       │   └── Vesting.hs
+│       │
+│       ├── tests/
+│       │   ├── CGPlutusUtilsSpec.hs
+│       │   ├── CGTimeSpec.hs
+│       │   ├── DemoSpec.hs
+│       │   ├── Main.hs
+│       │   ├── MintSpec.hs
+│       │   ├── ParameterizedVestingSpec.hs
+│       │   ├── Spec.hs
+│       │   └── VestingSpec.hs
+│       
+├── REPLTutorial.md
+├── Tutorials.md
+├── Tutorial-*.md (various guides)
+├── wspace.cabal
+├── cabal.project
+|── cabal.project.local│
+├── flake.nix
+├── default.nix
+├── LICENSE
+└── README.md
 ```
 
-> ⚙️ **Tip:** Always open REPL from the *project root* (`~/plinth-template`), not from `/src`.
+> 🧩 The **Utilities** package is a shared dependency library.
+> The **wspace** package contains your **Plutus V2 contracts**, specs, and markdown tutorials.
 
 ---
 
 ## 🧱 **3. Step 1 — Understanding the Cabal Configuration** <a name="step-1"></a>
 
-Your `plinth-template.cabal` defines a **library target** called `scripts`, containing all Plutus modules:
+### 🧰 `Utilities.cabal`
+
+```cabal
+library utilities
+  hs-source-dirs: src/Utilities
+  exposed-modules:
+    Utilities.Conversions
+    Utilities.PlutusTx
+    Utilities.Serialise
+    Utilities.Utilities
+  build-depends:
+    , base >=4.14 && <5
+    , aeson
+    , plutus-tx
+    , plutus-ledger-api
+    , plutus-core
+```
+
+### 🧱 `wspace.cabal`
 
 ```cabal
 library scripts
-  hs-source-dirs: src
+  hs-source-dirs: lecture
   exposed-modules:
-    AuctionMintingPolicy
-    AuctionValidator
-    AuctionTypes
+    CGPlutusUtilsv1
+    CGTime
+    Demo
+    Mint
+    ParameterizedVesting
+    Vesting
   build-depends:
     , base
+    , utilities
     , plutus-core ^>=1.54.0.0
     , plutus-ledger-api ^>=1.54.0.0
     , plutus-tx ^>=1.54.0.0
     , plutus-tx-plugin ^>=1.54.0.0
 ```
 
-✅ That means your REPL target is **`plinth-template:lib:scripts`**.
+✅ Your REPL target for Plutus code is **`wspace:lib:scripts`**
+✅ Your REPL target for shared utilities is **`Utilities:lib:utilities`**
 
 ---
 
 ## 💻 **4. Step 2 — Opening the Correct Cabal REPL** <a name="step-2"></a>
 
-Run the following from the project root:
+### 🧭 Open REPL for Plutus modules
 
 ```bash
-cd ~/plinth-template
-cabal repl plinth-template:lib:scripts
+cd ~/PLUTUS-NIX/code/wspace
+cabal repl wspace:lib:scripts
 ```
 
 Expected output:
 
 ```
-GHCi, version 9.6.6: https://www.haskell.org/ghc/
-Ok, modules loaded: AuctionTypes, AuctionValidator, AuctionMintingPolicy.
-*AuctionTypes>
+Ok, modules loaded: ParameterizedVesting, Vesting, Mint, Demo, CGTime, CGPlutusUtilsv1.
+*ParameterizedVesting>
 ```
 
-> 💡 **Tip:** Ignore warnings like
-> “Optimization flags are incompatible with the byte-code interpreter.”
-> These are safe in REPL mode.
+### 🧭 Open REPL for Utilities
+
+```bash
+cd ~/PLUTUS-NIX/code/Utilities
+cabal repl Utilities:lib:utilities
+```
+
+Expected output:
+
+```
+Ok, modules loaded: Utilities.Conversions, Utilities.PlutusTx, Utilities.Serialise, Utilities.Utilities.
+*Utilities.PlutusTx>
+```
+
+> 💡 You can switch between these REPL targets without closing GHCi — just quit (`:q`) and relaunch the other.
 
 ---
 
 ## 📘 **5. Step 3 — Loading and Testing a Module** <a name="step-3"></a>
 
-Once inside REPL, you can:
-
-* **Reload all files**
-
-  ```haskell
-  :r
-  ```
-* **Load a specific module**
-
-  ```haskell
-  :l src/AuctionTypes.hs
-  ```
-* **Import it**
-
-  ```haskell
-  import AuctionTypes
-  ```
-
-Then test functions or inspect types interactively:
+Inside REPL:
 
 ```haskell
-> :t AuctionParams
-AuctionParams :: PubKeyHash -> POSIXTime -> Integer -> CurrencySymbol -> TokenName -> AuctionParams
+:r                         -- Reload all
+:l lecture/ParameterizedVesting.hs
+import ParameterizedVesting
+:t mkValidator
+```
+
+Example:
+
+```haskell
+mkValidator :: Datum -> Redeemer -> ScriptContext -> Bool
 ```
 
 ---
 
-## 🧪 **6. Step 4 — Working with `AuctionTypes.hs`** <a name="step-4"></a>
+## 🧪 **6. Step 4 — Working with `ParameterizedVesting.hs`** <a name="step-4"></a>
 
-Here’s your **fixed, Plutus V2–compatible version** of `AuctionTypes.hs`:
+Example structure:
 
 ```haskell
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE NoImplicitPrelude #-}
 
-module AuctionTypes where
+module ParameterizedVesting where
 
 import GHC.Generics (Generic)
-import Data.Aeson (FromJSON, ToJSON)
-import PlutusTx (makeIsDataIndexed, makeLift)
-import PlutusTx.Prelude hiding (Semigroup(..), unless)
+import PlutusTx (unstableMakeIsData, makeLift)
+import PlutusTx.Prelude
+import PlutusLedgerApi.V2
+import Data.Aeson (ToJSON, FromJSON)
+import Prelude (Show)
 
-import PlutusLedgerApi.V2.Value (CurrencySymbol, TokenName, Value)
-import PlutusLedgerApi.V2.Time (POSIXTime)
-import PlutusLedgerApi.V2.Crypto (PubKeyHash)
-import qualified PlutusLedgerApi.V2.Value as Value
-import qualified PlutusLedgerApi.V2.Crypto as Crypto
+data VestingDatum = VestingDatum
+  { beneficiary :: PubKeyHash
+  , releaseTime :: POSIXTime
+  , amount      :: Integer
+  }
+  deriving (Show, Generic, ToJSON, FromJSON)
 
-deriving anyclass instance FromJSON Crypto.PubKeyHash
-deriving anyclass instance ToJSON Crypto.PubKeyHash
-deriving anyclass instance FromJSON Value.TokenName
-deriving anyclass instance ToJSON Value.TokenName
-deriving anyclass instance FromJSON Value.CurrencySymbol
-deriving anyclass instance ToJSON Value.CurrencySymbol
-
-data AuctionParams = AuctionParams
-    { apSeller   :: PubKeyHash
-    , apDeadline :: POSIXTime
-    , apMinBid   :: Integer
-    , apCurrency :: CurrencySymbol
-    , apToken    :: TokenName
-    }
-    deriving (Show, Generic, FromJSON, ToJSON)
-
-makeIsDataIndexed ''AuctionParams [('AuctionParams, 0)]
-makeLift ''AuctionParams
-
-data AuctionDatum = AuctionDatum
-    { adHighestBidder :: Maybe PubKeyHash
-    , adHighestBid    :: Integer
-    , adDeadline      :: POSIXTime
-    }
-    deriving (Show, Generic, FromJSON, ToJSON)
-
-makeIsDataIndexed ''AuctionDatum [('AuctionDatum, 0)]
-makeLift ''AuctionDatum
-
-data AuctionAction = Bid | Close
-    deriving (Show, Generic, FromJSON, ToJSON)
-
-makeIsDataIndexed ''AuctionAction [('Bid, 0), ('Close, 1)]
-makeLift ''AuctionAction
+PlutusTx.unstableMakeIsData ''VestingDatum
+PlutusTx.makeLift ''VestingDatum
 ```
 
-✅ This version matches your Cabal dependencies (`plutus-ledger-api-1.54.0.0`) and compiles perfectly under REPL.
+Test in REPL:
+
+```haskell
+> :t VestingDatum
+VestingDatum :: PubKeyHash -> POSIXTime -> Integer -> VestingDatum
+```
+
+✅ Compiles perfectly under Plutus V2 (`plutus-ledger-api-1.54.0.0`).
 
 ---
 
 ## 🔍 **7. Step 5 — Fixing Common Build Errors** <a name="step-5"></a>
 
-| Error Message                         | Cause                    | Fix                                          |
-| ------------------------------------- | ------------------------ | -------------------------------------------- |
-| `Cannot open repl for the package`    | You ran REPL from `/src` | Run `cabal repl` from project root           |
-| `Module 'Ledger' not found`           | Legacy import (V1)       | Use `PlutusLedgerApi.V2.*`                   |
-| `makeIsData` not exported             | Old API                  | Use `makeIsDataIndexed`                      |
-| `No instance for FromJSON PubKeyHash` | Missing Aeson instance   | Add standalone `deriving anyclass` instances |
-| `check not INLINABLE`                 | Invalid on-chain check   | Replace with `traceIfFalse`                  |
+| Error Message                         | Cause                    | Fix                                        |
+| ------------------------------------- | ------------------------ | ------------------------------------------ |
+| `Cannot open repl for the package`    | Wrong directory          | Run REPL inside `~/PLUTUS-NIX/code/wspace` |
+| `Unknown module: Ledger`              | Legacy import            | Replace with `PlutusLedgerApi.V2.*`        |
+| `makeIsData` not in scope             | Outdated API             | Use `unstableMakeIsData`                   |
+| `No instance for FromJSON PubKeyHash` | Missing JSON derivations | Add `deriving anyclass`                    |
+| `GHC plugin: PlutusTx Plugin failed`  | Missing plugin           | Add `plutus-tx-plugin` to dependencies     |
 
 ---
 
 ## 🧠 **8. Step 6 — Validating with QuickCheck or Hspec** <a name="step-6"></a>
 
-If you have test files like `test/All.hs`, open REPL for them:
+Each `.Spec.hs` file under `tests/` can be run via REPL.
+
+Example:
 
 ```bash
-cabal repl plinth-template:test:auction-tests
-:l test/All.hs
+cabal repl wspace:test:vesting-tests
+:l tests/ParameterizedVestingSpec.hs
 main
 ```
 
-Typical test setup:
-
 ```haskell
 import Test.Hspec
-import AuctionTypes
+import ParameterizedVesting
 
 main :: IO ()
-main = hspec $ describe "AuctionTypes" $
-  it "should create valid AuctionParams" $
-    apMinBid (AuctionParams "pkh" 12345 10 "cur" "tok") `shouldBe` 10
+main = hspec $ describe "ParameterizedVesting" $
+  it "validates datum creation" $
+    amount (VestingDatum "pkh" 1234 100) `shouldBe` 100
 ```
 
 ---
 
 ## 🧰 **9. Step 7 — Reloading, Debugging, and Exiting** <a name="step-7"></a>
 
-| Command            | Description                               |
-| ------------------ | ----------------------------------------- |
-| `:r`               | Reload all modules                        |
-| `:l <path>`        | Load a specific module                    |
-| `:t <symbol>`      | Show type                                 |
-| `:i <symbol>`      | Show detailed info                        |
-| `:browse <Module>` | List exported names                       |
-| `:q`               | Quit GHCi                                 |
-| `:set -v`          | Show search paths and compilation details |
-
-> 🧩 Use `:r` frequently after editing source files — it recompiles changes live.
+| Command            | Description         |
+| ------------------ | ------------------- |
+| `:r`               | Reload all files    |
+| `:l <path>`        | Load file manually  |
+| `:t <symbol>`      | Show type           |
+| `:i <symbol>`      | Show info           |
+| `:browse <Module>` | List exports        |
+| `:set -v`          | Verbose compilation |
+| `:q`               | Quit GHCi           |
 
 ---
 
 ## 📖 **10. Glossary of Terms** <a name="glossary"></a>
 
-| Term                           | Definition                                                       |
-| ------------------------------ | ---------------------------------------------------------------- |
-| **Cabal**                      | Haskell’s official build and dependency manager.                 |
-| **REPL**                       | Read–Eval–Print Loop — interactive environment for testing code. |
-| **PlutusTx**                   | Haskell-to-Plutus compiler layer for on-chain scripts.           |
-| **PlutusLedgerApi.V2**         | Ledger types and utilities for Cardano Plutus V2 era.            |
-| **Datum / Redeemer**           | On-chain data passed to Plutus scripts for validation.           |
-| **makeIsDataIndexed**          | Template Haskell function to serialize types for Plutus scripts. |
-| **traceIfFalse**               | On-chain logging + condition check for script failure.           |
-| **Aeson**                      | JSON (de)serialization library used off-chain.                   |
-| **INLINABLE**                  | Marks functions as usable in Plutus on-chain compilation.        |
-| **Minting Policy / Validator** | Plutus scripts that enforce token or UTxO rules.                 |
+| Term                   | Definition                               |
+| ---------------------- | ---------------------------------------- |
+| **Cabal**              | Build and dependency manager for Haskell |
+| **REPL**               | Read–Eval–Print Loop                     |
+| **PlutusTx**           | Compiler for Haskell → Plutus Core       |
+| **Datum/Redeemer**     | On-chain data inputs                     |
+| **unstableMakeIsData** | Derives serialization for on-chain types |
+| **QuickCheck/Hspec**   | Haskell property testing frameworks      |
+| **POSIXTime**          | Smart contract timestamp                 |
+| **PubKeyHash**         | Hash identifying wallet public key       |
 
 ---
 
-### 🧭 **In summary**
+### 🧭 **Summary**
 
-You now have a **clean, production-grade setup** for:
+Your `PLUTUS-NIX` project now has a **two-layer REPL workflow**:
 
-* Running Plutus V2 modules interactively,
-* Testing datatypes and on-chain logic,
-* Fixing compilation issues related to Cabal and GHCi,
-* And using `cabal repl` like a pro.
+| Package       | REPL Target               | Purpose                                |
+| ------------- | ------------------------- | -------------------------------------- |
+| **Utilities** | `Utilities:lib:utilities` | Common helpers & encoding utilities    |
+| **wspace**    | `wspace:lib:scripts`      | Smart contracts, validators, and specs |
+
+You can now:
+
+✅ Load Plutus and utility modules directly
+✅ Debug validators with GHCi
+✅ Run all test specs
+✅ Iterate on scripts before serialization
 
 ---
-
