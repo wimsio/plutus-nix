@@ -27,7 +27,7 @@ common common-all
         time
     default-language: Haskell2010
     ghc-options:
-        -Wall
+        -Wno-unused-packages
         -fobject-code
         -fno-ignore-interface-pragmas
         -fno-omit-interface-pragmas
@@ -49,14 +49,16 @@ common common-all-tests
       plutus-ledger-api
     default-language: Haskell2010
 
-library
-    import:             common-all
-    hs-source-dirs:     lecture
+library 
+    import:            common-all
+    hs-source-dirs:    lecture
     exposed-modules:
-        ParameterizedVesting,
-        CGPlutusUtilsv1,
-        CGTime,
-        Vesting
+      CGPlutusUtilsv1
+      CGTime
+      Demo
+      Mint
+      ParameterizedVesting
+      Vesting
 
 executable vesting-exe
     main-is:            Main.hs

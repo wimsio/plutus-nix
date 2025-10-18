@@ -1,13 +1,4 @@
-Perfect — this new structure clarifies that your project actually contains **two main components**:
-
-* a **Utilities** package (`code/Utilities`)
-* a **wspace** package (`code/wspace`) with all your Plutus tutorial and test modules.
-
-Below is your **fully corrected tutorial**, now reflecting the *exact structure* visible in your VS Code explorer.
-
----
-
-# 🧭 **Professional Tutorial: Testing and Working with Plutus Modules in Cabal REPL (V2 Setup)**
+# 🧭 **Testing and Working with Plutus Modules in Cabal REPL**
 
 ---
 
@@ -48,8 +39,8 @@ PLUTUS-NIX/
 │   │   │   ├── Utilities/
 │   │   │   │   ├── Conversions.hs
 │   │   │   │   ├── PlutusTx.hs
-│   │   │   │   └── Serialise.hs
-│   │   │   └── Utilities.hs
+│   │   │   │   ├── Serialise.hs
+│   │   │   │   └── Utilities.hs
 │   │   └── Utilities.cabal
 │   │
 │   └── wspace/
@@ -71,13 +62,14 @@ PLUTUS-NIX/
 │       │   ├── ParameterizedVestingSpec.hs
 │       │   ├── Spec.hs
 │       │   └── VestingSpec.hs
-│       
-├── REPLTutorial.md
-├── Tutorials.md
-├── Tutorial-*.md (various guides)
-├── wspace.cabal
-├── cabal.project
-|── cabal.project.local│
+│       │
+│       ├── REPLTutorial.md
+│       ├── Tutorials.md
+│       ├── Tutorial-*.md (various guides)
+│       ├── wspace.cabal
+│       ├── cabal.project
+│       └── cabal.project.local
+│
 ├── flake.nix
 ├── default.nix
 ├── LICENSE
@@ -112,7 +104,6 @@ library utilities
 ### 🧱 `wspace.cabal`
 
 ```cabal
-
 library scripts
   hs-source-dirs: lecture
   exposed-modules:
