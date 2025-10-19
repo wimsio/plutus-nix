@@ -14,7 +14,7 @@ import           Plutus.V2.Ledger.Api      (BuiltinData, POSIXTime, PubKeyHash,
 import           Plutus.V2.Ledger.Contexts (txSignedBy)
 import           PlutusTx                  (compile, makeIsDataIndexed, unstableMakeIsData)
 import           PlutusTx.Prelude          (Bool, traceIfFalse, ($), (&&))
-import           Prelude                   (IO, String, Integer)
+import           Prelude                   (IO, String, Integer, Show)
 import           Utilities                 (Network, posixTimeFromIso8601,
                                             printDataToJSON,
                                             validatorAddressBech32,
@@ -27,7 +27,7 @@ data VestingDatum = VestingDatum
     { beneficiary :: PubKeyHash
     , deadline    :: POSIXTime
     , code        :: Integer
-    }
+    } deriving (Show)
 
 unstableMakeIsData ''VestingDatum
 
