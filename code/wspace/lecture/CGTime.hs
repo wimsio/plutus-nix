@@ -19,6 +19,7 @@ module CGTime
   , formatUTC
   , parseUTC
   , getLocalISO8601
+  , utcTimeNowToPOSIXTime
   ) where
 
 import           Data.Time                             (UTCTime, NominalDiffTime)
@@ -48,6 +49,13 @@ posixToISO8601 = iso8601Show . posixToUTC
 -- | Get the current UTC time as 'UTCTime'.
 getUTCNow :: IO UTCTime
 getUTCNow = getCurrentTime
+
+-- | Get the current UTC time, convert it to POSIXTime, and wrap it in Just.
+utcTimeNowToPOSIXTime :: IO (Maybe POSIXTime)
+utcTimeNowToPOSIXTime = do
+    utc <- getUTCNow
+    let secs = fromInteger (floor (utcToPOSIX utc)) :: POSIXTime
+    pure (Just secs)
 
 -- | Get the current time as 'POSIXTime' (seconds since Unix epoch).
 getPOSIXNow :: IO POSIXTime

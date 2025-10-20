@@ -9,6 +9,7 @@ module CGPlutusUtilsv1
   , decodeBech32Address
   , AddressInfo(..)
   , rebuildBaseAddress
+  , pkhStrToPkh
   ) where
 
 import Codec.Binary.Bech32
@@ -26,6 +27,8 @@ import qualified Data.ByteString.Char8      as C
 import qualified Data.ByteString.Base16     as B16
 import qualified Plutus.V1.Ledger.Crypto    as Crypto
 import qualified PlutusTx.Builtins.Class    as Builtins
+import Plutus.V1.Ledger.Crypto (PubKeyHash(..))
+import PlutusTx.Builtins (toBuiltin)
 
 --------------------------------------------------------------------------------
 -- Simple Bech32 Address to PubKeyHash Extractor (only payment key)
@@ -89,6 +92,16 @@ decodeBech32Address addrStr = do
         then let (pay, stake) = BS.splitAt 28 bs
               in Right $ BaseAddr (Crypto.PubKeyHash $ Builtins.toBuiltin pay) stake
         else Left "Payload too short for base address"
+
+--------------------------------------------------------------------------------
+-- pkhStrToPkh :: String -> Either String PubKeyHash
+--------------------------------------------------------------------------------
+-- | Convert a hex-encoded string (e.g. "096f22...") into a Plutus PubKeyHash
+pkhStrToPkh :: String -> PubKeyHash
+pkhStrToPkh hexStr =
+    case  B16.decode (C.pack hexStr) of
+      Right decoded -> PubKeyHash (toBuiltin decoded)
+      Left err      -> error $ "Invalid hex input for PubKeyHash: " ++ err
 
 --------------------------------------------------------------------------------
 -- Bech32 address construction
