@@ -89,4 +89,5 @@ test-suite wspace-tests
       CGTimeSpec
       ParameterizedVestingSpec
       VestingSpec
+      DemoSpec
     default-language:    Haskell2010
