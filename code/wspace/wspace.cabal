@@ -51,7 +51,7 @@ common common-all-tests
 
 library 
     import:            common-all
-    hs-source-dirs:    lecture
+    hs-source-dirs:    lecture,src
     exposed-modules:
       CGPlutusUtilsv1
       CGTime
