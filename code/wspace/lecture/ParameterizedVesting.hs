@@ -60,10 +60,6 @@ validator params =
       `applyCode` liftCode params
     )
 
---------------------------------------------------------------------------------
--- HELPERS
---------------------------------------------------------------------------------
-
 fromHexPKH :: String -> PubKeyHash
 fromHexPKH hex =
   case B16.decode (C.pack hex) of

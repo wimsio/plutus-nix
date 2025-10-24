@@ -1,4 +1,4 @@
 module Demo where
 
 greet :: String -> String
-greet name = name
+greet name = "Helllo "++name
