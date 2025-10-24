@@ -11,5 +11,5 @@ tests :: TestTree
 tests = testGroup "Demo Tests"
   [ testCase "Person coded is Bernard?" $
       let person = greet "Bernard"
-      in person @?= "Bernard"
+      in person @?= "Hello Bernard"
   ]
