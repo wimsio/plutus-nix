@@ -5,8 +5,7 @@ import Plutus.V2.Ledger.Api (PubKeyHash)
 
 data EscrowDatum = EscrowDatum 
   {
-    creator :: PubKeyHash,
-    
+    creator :: PubKeyHash    
   } deriving(Show,Eq)
 
 data EscrowRedeemer = Withdraw | Cancel deriving(Show,Eq )

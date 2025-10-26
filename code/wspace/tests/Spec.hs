@@ -9,6 +9,8 @@ import ParameterizedVestingSpec qualified as ParameterizedVestingSpec
 import VestingSpec             qualified as VestingSpec
 import DemoSpec                qualified as DemoSpec
 import EscrowSpec              qualified as EscrowSpec
+import TemplateHaskellDemoSpec qualified as TemplateHaskellDemoSpec
+
 
 
 main :: IO ()
@@ -23,4 +25,5 @@ allTests =
     , CGPlutusUtilsSpec.tests
     , DemoSpec.tests     
     , EscrowSpec.tests   
+    , TemplateHaskellDemoSpec.tests
     ]
