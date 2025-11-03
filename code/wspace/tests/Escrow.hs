@@ -137,7 +137,8 @@ plutusValidatorHash validator =
 -- Derive the Plutus script address from the hash
 plutusScriptAddress :: Address
 plutusScriptAddress =
-    Address (ScriptCredential plutusValidatorHash) Nothing
+    Address (ScriptCredential (plutusValidatorHash validator)) Nothing
+
 
 
 -- Off-chain (Cardano API) Bech32 address for CLI use
@@ -179,13 +180,14 @@ main = do
 
     writeValidator "validator.plutus" validator
 
-    let vh      = plutusValidatorHash
+    let vh      = plutusValidatorHash validator
         onchain = plutusScriptAddress
         bech32  = toBech32ScriptAddress network validator
+
 
     putStrLn "\n--- Escrow NFT Validator Info ---"
     putStrLn $ "Validator Hash (Plutus): " <> P.show vh
     putStrLn $ "Plutus Script Address:    " <> P.show onchain
     putStrLn $ "Bech32 Script Address:    " <> bech32
     putStrLn "---------------------------------"
-    putStrLn "✅ Escrow NFT validator generated successfully."
+    putStrLn "Escrow NFT validator generated successfully."
