@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Haskell Plutus Smart Contract Playground</title>
+<style>
+  * { box-sizing: border-box; font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  body { margin: 3; background: #f5f7fb; height: 100vh; display: flex; flex-direction: column; overflow: hidden; border-radius: 4px;}
+  header { display: flex; justify-content: space-between; align-items: center; background: #f0f8ff; color: #002b45;
+    padding: 10px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+  .logo { font-size: 18px; font-weight: 600; letter-spacing: 0.5px; }
+  #toggleBtn { background: #00bcd4; color: #fff; border: none; border-radius: 6px; padding: 8px 14px; cursor: pointer;
+    font-size: 14px; transition: all .3s ease; }
+  #toggleBtn:hover { background: #0097a7; }
+  .container { display: flex; flex: 1; height: calc(100vh - 100px); }
+  .sidebar { width: 200px; background: #fff; border-right: 1px solid #ddd; display: flex; flex-direction: column;
+    transition: width .3s ease; box-shadow: 2px 0 4px rgba(0,0,0,0.05); height: 100%; }
+  .sidebar.collapsed { width: 0; }
+  .menu-btn {  background: #f0f8ff;border-left: 3px solid #00bcd4; border-top:none;border-right:none;border-bottom:1px solid orange;text-align: left; padding: 14px 20px; font-size: 15px; color: #333;
+    cursor: pointer; transition: background .3s, color .3s; }
+  .menu-btn:hover { background: #00bcd4; color: #fff;  }
+  .content { flex: 1; display: flex; flex-direction: column; height: 100%; background: #fafbfc; padding: 6px; }
+  .editor { flex: 1; padding: 15px; display: none; flex-direction: column; background: #fff; border-radius: 8px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.05); position: relative; }
+  .editor.active { display: flex; }
+  h3 { margin-top: 0; font-weight: 500; color: #002b45; padding-bottom: 5px; }
+  textarea { flex: 1; width: 100%; resize: none; border: 1px solid #ccc; padding: 10px; font-family: monospace;
+    font-size: 14px; border-radius: 6px; background: #fdfdfd; color: #222; }
+  textarea:focus { border-color: #00bcd4; outline: none; box-shadow: 0 0 4px rgba(0,188,212,0.3); }
+  .toolbar { position: absolute; top: 3px; right: 12px; background: #f0f8ff; border-radius: 8px; display: flex; gap: 10px;
+    padding: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); z-index: 10; }
+  .tool-btn { background: transparent; border: none; color: #002b45; font-size: 16px; cursor: pointer;
+    transition: transform .2s, color .2s; }
+  .tool-btn:hover { color: #00bcd4; transform: scale(1.1); }
+  .debug-console { height: 16.6%; background: #fff; color: #002b45; border-top: 2px solid #00bcd4; padding: 10px;
+    font-family: monospace; font-size: 13px; overflow-y: auto; white-space: pre-wrap; border-radius: 6px 6px 0 0;
+    box-shadow: inset 0 0 6px rgba(0,0,0,0.6); }
+  footer { background: #f0f8ff; color: #002b45; text-align: center; font-size: 14px; padding: 10px;
+    letter-spacing: 0.4px; box-shadow: 0 -2px 6px rgba(0,0,0,0.2); }
+  .toggle-area { margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+  label { font-size: 14px; color: #002b45; }
+  @media(max-width:768px){
+    .container{flex-direction:column;height:auto;}
+    .sidebar{flex-direction:row;width:100%;height:auto;border-bottom:1px solid #ddd;box-shadow:none;}
+    .menu-btn{flex:1;text-align:center;padding:10px;font-size:14px;}
+    .content{height:calc(100vh - 150px);}
+  }
+  .tool-btn {
+    margin: 0 5px;
+    padding: 6px 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  #tutorialPanel h1, #tutorialPanel h2, #tutorialPanel p, #tutorialPanel pre, #tutorialPanel code {
+  margin-bottom: 12px;
+}
+#tutorialPanel pre {
+  background: #f0f0f0;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+#tutorialFrame {
+  width: 100%;
+  height: 100%;
+  background: white;
+}
+
+.editor-split-view {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  height: 100%;
+}
+
+/* Each side takes 50% height on mobile, 50% width on desktop */
+.editor-split-view .editor {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tutorial iframe style */
+.tutorial-view {
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.05);
+}
+
+.tutorial-view iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 6px;
+}
+
+/* 🧠 Responsive stack on small screens (50% height each) */
+@media (max-width: 768px) {
+  .editor-split-view {
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .editor-split-view .editor {
+    height: 50%;
+    max-height: 50%;
+  }
+
+  .tutorial-view iframe {
+    height: 100%;
+    min-height: unset;
+  }
+}
+
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">💎 Haskell Plutus Smart Contract Tutorial Playground</div>
+  <button id="toggleBtn">☰ Menu</button>
+</header>
+
+<div class="container">
+  <div class="sidebar" id="sidebar">
+    <button class="menu-btn" onclick="showEditor('onchain')">&#9881; Onchain</button>
+    <button class="menu-btn" onclick="showEditor('offchain')">&#128187; Offchain</button>
+    <button class="menu-btn" onclick="showEditor('deploy')">&#128640; Deploy</button>
+    <button class="menu-btn" onclick="showEditor('test')">&#129514; Test</button>
+    <hr>
+  </div>
+<div class="content">
+  <div class="editor-split-view">
+    <!-- Onchain -->
+    <div class="editor active" id="onchain">
+      <div class="toolbar">
+        <button class="tool-btn" title="Download Code" onclick="downloadCode()">⬇️</button>
+        <button class="tool-btn" title="Copy Code" onclick="copyCode()">📋</button>
+        <button class="tool-btn" title="Clear Logs" onclick="clearLogs()">🧹</button>
+        <button class="tool-btn" title="Refresh" onclick="hardRefresh()">🔄</button>
+        
+      </div>
+      <h3>1. Onchain Code</h3>
+      <div>
+        <button class="menu-btn" data-template="template" data-filename="./boilerPlate/validators/template.html">📘 Template</button>
+        <button class="menu-btn" data-template="escrow" data-filename="./boilerPlate/validators/escrow.html">📘 Escrow</button>
+        <button class="menu-btn" data-template="flashloans" data-filename="./boilerPlate/validators/flashloans.html">📘 Flash Loans</button>
+        <button class="menu-btn" data-template="donation" data-filename="./boilerPlate/validators/donation.html">📘 Donation</button>
+        <button class="menu-btn" data-template="swap" data-filename="./boilerPlate/validators/swap.html">📘 Swap</button>
+        <button class="menu-btn" data-template="will" data-filename="./boilerPlate/validators/will.html">📘 Will</button>
+        <button class="menu-btn" data-template="voting" data-filename="./boilerPlate/validators/voting.html">📘 Voting</button>
+        <button class="menu-btn" data-template="attendance" data-filename="./boilerPlate/validators/attendance.html">📘 Attendance</button>
+        
+      </div>
+      <br>
+      <textarea id="onchainCode" placeholder="Click 'Generate Template' to insert full Plutus module here..."></textarea>
+    </div>
+
+    <!-- Tutorial Panel -->
+    <div class="editor tutorial-view" id="tutorial" style="display: none;">
+      <iframe id="tutorialFrame"></iframe>
+    </div>
+  </div>
+
+  <!-- Other panels -->
+  <div class="editor" id="offchain">
+    <h3>2. Offchain Code Editor</h3>
+    <textarea id="offchainCode" placeholder="Build Helios transaction code here..."></textarea>
+  </div>
+
+  <div class="editor" id="deploy">
+    <h3>3. Deploy Frontend UI</h3>
+    <textarea id="deployCode" placeholder="Deployment scripts or CLI commands..."></textarea>
+  </div>
+
+  <div class="editor" id="test">
+    <h3>4. Test Panel</h3>
+    <textarea id="testCode" placeholder="Run simulation or test logs..."></textarea>
+  </div>
+
+  <div class="debug-console" id="debugConsole">[INFO] Debug console initialized.</div>
+</div>
+</div>
+
+<footer>© 2025 Coxygen Global Pty Ltd — MIT License — All Rights Reserved</footer>
+
+<script type="module">
+  import { templateFile } from './boilerPlate/validators/template.js';
+  import { escrowFile } from './boilerPlate/validators/escrow.js';
+  import { flashloansFile } from './boilerPlate/validators/flashloans.js';
+  import { donationFile } from './boilerPlate/validators/donation.js';
+  import { swapFile } from './boilerPlate/validators/swap.js';
+  import { willFile } from './boilerPlate/validators/will.js';
+  import { votingFile } from './boilerPlate/validators/voting.js';
+  import { attendanceFile } from './boilerPlate/validators/attendance.js';
+
+  function generateTemplate() {
+    const code = document.getElementById('onchainCode');
+    code.value = templateFile;
+    logDebug("Generated template Validator module.");
+  }
+
+  function loadFiles(template, filename) {
+    const code = document.getElementById('onchainCode');
+    const tutorialFrame = document.getElementById('tutorialFrame');
+    const tutorialPanel = document.getElementById('tutorial');
+
+    let templateModule = null;
+
+    switch (template) {
+      case 'template': templateModule = templateFile; break;
+      case 'escrow': templateModule = escrowFile; break;
+      case 'flashloans': templateModule = flashloansFile; break;
+      case 'donation': templateModule = donationFile; break;
+      case 'swap': templateModule = swapFile; break;
+      case 'will': templateModule = willFile; break;
+      case 'voting': templateModule = votingFile; break;
+      case 'attendance': templateModule = attendanceFile; break;
+      default:
+        logDebug(`❌ Unknown template: ${template}`);
+        return;
+    }
+
+    code.value = templateModule;
+    tutorialFrame.src = filename;
+    tutorialPanel.style.display = 'flex';
+    logDebug(`✅ Loaded ${template} template and tutorial: ${filename}`);
+  }
+
+  // async function loadTutorial(filename) {
+  //   const tutorialPanel = document.getElementById("tutorial");
+  //   const tutorialFrame = document.getElementById("tutorialFrame");
+
+  //   try {
+  //     tutorialFrame.src = filename;
+  //     tutorialPanel.style.display = "flex";
+  //     logDebug(`✅ Loaded tutorial via iframe: ${filename}`);
+  //   } catch (err) {
+  //     tutorialFrame.srcdoc = `<p style="color:red;">❌ Failed to load tutorial: ${err.message}</p>`;
+  //     tutorialPanel.style.display = "flex";
+  //     logDebug(`❌ Error loading tutorial: ${err}`);
+  //   }
+  // }
+
+  function downloadCode() {
+    const code = document.getElementById("onchainCode").value || "";
+    if (!code.trim()) {
+      alert("Code is empty or not found.");
+      return;
+    }
+
+    const blob = new Blob([code], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "plutus_validator.hs";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+  }
+
+  function generateEscrowTemplate() {
+    document.getElementById('onchainCode').value = escrowFile;
+    logDebug(`Generated Escrow Validator module.`);
+  }
+
+  function generateFlashloansTemplate() {
+    document.getElementById('onchainCode').value = flashloansFile;
+    logDebug("Generated Flashloans Validator module.");
+  }
+
+  function generateDonationTemplate() {
+    document.getElementById('onchainCode').value = donationFile;
+    logDebug("Generated Donation Validator module.");
+  }
+
+  function generateSwapTemplate() {
+    document.getElementById('onchainCode').value = swapFile;
+    logDebug("Generated Swap Validator module.");
+  }
+
+  function generateWillTemplate() {
+    document.getElementById('onchainCode').value = willFile;
+    logDebug("Generated Will Validator module.");
+  }
+
+  function generateVotingTemplate() {
+    document.getElementById('onchainCode').value = votingFile;
+    logDebug("Generated Voting Validator module.");
+  }
+
+  function generateAttendanceTemplate() {
+    document.getElementById('onchainCode').value = attendanceFile;
+    logDebug("Generated Attendance Validator module.");
+  }
+
+  function showEditor(id) {
+    document.querySelectorAll('.editor').forEach(e => e.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+
+    if (id !== 'onchain') {
+      document.getElementById('tutorial').style.display = 'none';
+    }
+
+    logDebug(`Switched to ${id} editor`);
+  }
+
+  const sidebar = document.getElementById('sidebar');
+  document.getElementById('toggleBtn').addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    logDebug('Sidebar toggled');
+  });
+
+  const debugConsole = document.getElementById('debugConsole');
+
+  function logDebug(msg) {
+    const now = new Date().toLocaleTimeString();
+    debugConsole.textContent += `\n[${now}] ${msg}`;
+    debugConsole.scrollTop = debugConsole.scrollHeight;
+  }
+
+  function clearLogs() {
+    debugConsole.textContent = "[INFO] Logs cleared.";
+  }
+
+  function saveCode() {
+    logDebug("Code saved (simulated).");
+  }
+
+  async function copyCode() {
+    const code = document.getElementById('onchainCode').value;
+    if (!code.trim()) {
+      logDebug("No code to copy!");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(code);
+      logDebug("✅ Code copied to clipboard!");
+    } catch (err) {
+      logDebug("❌ Failed to copy code: " + err);
+    }
+  }
+ function hardRefresh() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('_ts', Date.now().toString());
+    window.location.replace(url.toString());
+  }
+  Object.assign(window, {
+    hardRefresh,
+    copyCode,
+    showEditor,
+    logDebug,
+    clearLogs,
+    saveCode,
+    downloadCode
+  });
+  document.addEventListener("DOMContentLoaded", () => {
+  const templateButtons = document.querySelectorAll('[data-template][data-filename]');
+  templateButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const template = btn.getAttribute('data-template');
+      const filename = btn.getAttribute('data-filename');
+      loadFiles(template, filename);
+    });
+  });
+});
+
+</script>
+
+</script>
+</body>
+</html>

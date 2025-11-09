@@ -21,6 +21,7 @@ import           Utilities                   (wrapValidator, writeValidatorToFil
 import qualified PlutusTx.Builtins.Class     as Builtins
 import qualified Data.ByteString.Char8       as C
 import qualified Data.ByteString.Base16      as B16
+import Prelude (IO, String, FilePath, Either(..), (>=), putStrLn, (<>))
 
 --------------------------------------------------------------------------------
 -- ON-CHAIN / VALIDATOR

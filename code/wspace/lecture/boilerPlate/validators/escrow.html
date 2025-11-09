@@ -1,0 +1,140 @@
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>🧩 Tutorial: Understanding and Using <code>Escrow.hs</code></title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2em; max-width: 1000px; margin: auto; line-height: 1.6; }
+    code, pre { background: #f4f4f4; padding: 0.5em; border-radius: 4px; display: block; overflow-x: auto; }
+    h1, h2, h3 { border-bottom: 1px solid #ccc; padding-bottom: 0.3em; }
+    ul, ol { margin-left: 1.5em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+    th, td { border: 1px solid #ddd; padding: 0.6em; }
+    th { background-color: #f2f2f2; }
+    .toc li { margin-bottom: 0.3em; }
+  </style>
+</head>
+<body>
+
+<h1>🧩 Tutorial: Understanding and Using <code>Escrow.hs</code></h1>
+<p>This tutorial walks through the <code>Escrow.hs</code> smart contract module. It enables NFT-based escrow logic between a buyer and seller with deadlines, using Plutus V2. We explain the module’s components, logic, helper functions, and how to deploy it.</p>
+
+<h2>📑 Table of Contents</h2>
+<ol class="toc">
+  <li><a href="#1-language-extensions">⚙️ Language Extensions</a></li>
+  <li><a href="#2-imports">📦 Imports</a></li>
+  <li><a href="#3-datum-redeemer">📄 Datum & Redeemer</a></li>
+  <li><a href="#4-helper-functions">🧰 Helper Functions</a></li>
+  <li><a href="#5-validator-logic">🛡️ Validator Logic</a></li>
+  <li><a href="#6-boilerplate">🏗️ Boilerplate & Wrappers</a></li>
+  <li><a href="#7-address-generation">🏷️ Address Generation</a></li>
+  <li><a href="#8-file-output">💾 Saving to File</a></li>
+  <li><a href="#9-main-script">🚀 Main Script</a></li>
+  <li><a href="#10-glossary">📘 Glossary</a></li>
+</ol>
+
+<h2 id="1-language-extensions">1. ⚙️ Language Extensions</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}</code></pre>
+<p>These enable advanced typing, TH macros, and working with on-chain typed data.</p>
+
+<h2 id="2-imports">2. 📦 Imports</h2>
+<p>Imports cover Plutus on-chain API, serialization, and off-chain Bech32 support:</p>
+<ul>
+  <li><code>Plutus.V2.Ledger.Api</code> and <code>Contexts</code> for validator logic</li>
+  <li><code>Plutus.V1.Ledger.Value</code> for token and ADA access</li>
+  <li><code>Cardano.Api</code> to generate CLI-compatible script addresses</li>
+</ul>
+
+<h2 id="3-datum-redeemer">3. 📄 Datum & Redeemer</h2>
+<p><code>EscrowDatum</code> and <code>EscrowAction</code> carry all necessary data:</p>
+<pre><code>data EscrowDatum = EscrowDatum
+  { edBuyer    :: PubKeyHash
+  , edSeller   :: PubKeyHash
+  , edAmount   :: Integer
+  , edDeadline :: POSIXTime
+  , edCurrency :: CurrencySymbol
+  , edToken    :: TokenName
+  }</code></pre>
+<ul>
+  <li><strong>Buyer/Seller</strong>: Participant identities</li>
+  <li><strong>Amount</strong>: ADA amount</li>
+  <li><strong>Deadline</strong>: POSIX time for refund</li>
+  <li><strong>Currency/Token</strong>: NFT asset locked in escrow</li>
+</ul>
+
+<h2 id="4-helper-functions">4. 🧰 Helper Functions</h2>
+<pre><code>scriptInputContainsNFT ctx cs tn =
+  case findOwnInput ctx of
+    Nothing -> traceError "no input from script found"
+    Just i  -> let v = txOutValue $ txInInfoResolved i
+               in valueOf v cs tn >= 1</code></pre>
+<p>Ensures the NFT is indeed locked at the script input.</p>
+
+<h2 id="5-validator-logic">5. 🛡️ Validator Logic</h2>
+<p>Handles both <code>PaySeller</code> and <code>RefundSeller</code> cases:</p>
+<pre><code>mkValidator dat action ctx = case action of
+  PaySeller ->
+    traceIfFalse "script input missing NFT" ...
+    traceIfFalse "buyer signature missing" ...
+    traceIfFalse "seller not paid" ...
+    traceIfFalse "buyer not receive NFT" ...
+  RefundSeller ->
+    traceIfFalse "script input missing NFT" ...
+    traceIfFalse "seller signature missing" ...
+    traceIfFalse "too early for refund" ...
+    traceIfFalse "seller did not receive NFT" ...</code></pre>
+<p>Each path validates:
+<ul>
+  <li>Ownership signatures</li>
+  <li>Time constraints (deadline)</li>
+  <li>Payment and token transfer guarantees</li>
+</ul></p>
+
+<h2 id="6-boilerplate">6. 🏗️ Boilerplate & Wrappers</h2>
+<pre><code>mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()</code></pre>
+<p>Wraps the typed validator for on-chain usage with <code>unsafeFromBuiltinData</code>.</p>
+
+<h2 id="7-address-generation">7. 🏷️ Address Generation</h2>
+<p>Creates:</p>
+<ul>
+  <li>On-chain <strong>Plutus</strong> address</li>
+  <li><strong>Bech32</strong> encoded CLI-compatible address</li>
+</ul>
+
+<h2 id="8-file-output">8. 💾 Saving to File</h2>
+<pre><code>writeValidator :: FilePath -> Validator -> IO ()</code></pre>
+<p>Serializes the validator to a file using <code>Codec.Serialise</code>.</p>
+
+<h2 id="9-main-script">9. 🚀 Main Script</h2>
+<pre><code>main = do
+  let network = C.Testnet ...
+  writeValidator ...
+  putStrLn $ "Bech32: " <> ...</code></pre>
+<p>Full compilation + address print for testing and deployment.</p>
+
+<h2 id="10-glossary">10. 📘 Glossary</h2>
+<table>
+  <thead>
+    <tr><th>🔹 Term</th><th>💬 Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Validator</code></td><td>The smart contract logic compiled to Plutus Core</td></tr>
+    <tr><td><code>POSIXTime</code></td><td>Cardano timestamp for deadline management</td></tr>
+    <tr><td><code>CurrencySymbol</code></td><td>Unique token family (e.g., NFT policy ID)</td></tr>
+    <tr><td><code>TokenName</code></td><td>Specific token inside that currency (e.g., "NFT1")</td></tr>
+    <tr><td><code>traceIfFalse</code></td><td>Conditional checks with debug strings</td></tr>
+    <tr><td><code>valuePaidTo</code></td><td>Checks outgoing value to participant</td></tr>
+    <tr><td><code>txSignedBy</code></td><td>Confirms signer authorization</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

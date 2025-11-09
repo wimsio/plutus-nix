@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🔄 Tutorial: Swap.hs — NFT‑for‑Token Escrow (Plutus V2)</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 0; padding: 2px; line-height: 1.6; background: #fff; color: #222; }
+    h1, h2, h3 { color: #002b45; }
+    pre { background: #f0f0f0; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    code { font-family: monospace; background: #fdfdfd; padding: 2px 4px; border-radius: 4px; color: #c7254e; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    table, th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f0f8ff; color: #002b45; }
+    a { color: #0077cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .callout { border-left: 4px solid #0077cc; background: #f4f9ff; padding: 10px 12px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+
+<h1>🔄 Tutorial: Understanding and Using <code>Swap.hs</code></h1>
+<p>This guide explains a simple yet realistic <strong>NFT‑for‑token escrow</strong> validator. It ensures the <em>seller</em> is paid the quoted fungible tokens, the <em>buyer</em> receives all specified NFTs, both parties sign, and the swap occurs before expiry (unless disabled).</p>
+
+<h2>📑 Table of Contents</h2>
+<ol>
+  <li><a href="#ext">⚙️ Language Extensions</a></li>
+  <li><a href="#imports">📦 Module Imports</a></li>
+  <li><a href="#types">🧱 On‑Chain Types</a></li>
+  <li><a href="#logic">🛡️ Core Validator Logic</a></li>
+  <li><a href="#wrapper">🎁 Untyped Wrapper</a></li>
+  <li><a href="#compile">💾 Compilation &amp; Instance</a></li>
+  <li><a href="#usage">🚀 Instantiate &amp; Use</a></li>
+  <li><a href="#pitfalls">🧭 Pitfalls &amp; Notes</a></li>
+  <li><a href="#glossary">📘 Glossary</a></li>
+  <li><a href="#appendix">📎 Appendix: Full Module</a></li>
+</ol>
+
+<h2 id="ext">1. ⚙️ Language Extensions</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+</code></pre>
+<ul>
+  <li><strong>NoImplicitPrelude</strong>: Use <code>PlutusTx.Prelude</code> on‑chain.</li>
+  <li><strong>TemplateHaskell</strong>: Compile and specialize the parameterized validator.</li>
+</ul>
+
+<h2 id="imports">2. 📦 Module Imports</h2>
+<pre><code>import Prelude (IO, print)
+import Plutus.V2.Ledger.Api
+import Plutus.V2.Ledger.Contexts (txSignedBy, valuePaidTo, txInfoOutputs)
+import PlutusTx
+import PlutusTx.Prelude hiding (Semigroup(..), unless, print)
+import Plutus.V1.Ledger.Value (assetClassValueOf, valueOf, AssetClass(..))
+import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+import Plutus.V1.Ledger.Interval (from, to, contains)
+</code></pre>
+<p><strong>Note:</strong> We reference <code>pubKeyHashAddress</code> from V1 to build a buyer address for output checks; this is acceptable in many setups, but you can adapt to your own address helpers.</p>
+
+<h2 id="types">3. 🧱 On‑Chain Types</h2>
+<pre><code>data SwapParam = SwapParam
+  { spSeller  :: PubKeyHash
+  , spBuyer   :: PubKeyHash
+  , spNFTs    :: [(CurrencySymbol, TokenName)] -- required NFTs
+  , spTokenCS :: CurrencySymbol                -- payment token policy
+  , spTokenTN :: TokenName                     -- payment token name
+  , spPrice   :: Integer                       -- amount to pay
+  , spExpiry  :: POSIXTime                     -- deadline (0 = no expiry)
+  }
+PlutusTx.unstableMakeIsData ''SwapParam
+PlutusTx.makeLift               ''SwapParam
+
+data SwapDatum    = SwapDatum
+PlutusTx.unstableMakeIsData ''SwapDatum
+
+data SwapRedeemer = SwapRedeemer
+PlutusTx.unstableMakeIsData ''SwapRedeemer
+</code></pre>
+<ul>
+  <li><code>spNFTs</code>: list of NFTs (policy, token) the buyer must receive.</li>
+  <li><code>spTokenCS/TN + spPrice</code>: fungible token the seller must be paid.</li>
+  <li><code>spExpiry</code>: upper time bound; set to <code>0</code> to disable.</li>
+</ul>
+
+<h2 id="logic">4. 🛡️ Core Validator Logic</h2>
+<pre><code>{-# INLINABLE mkSwapValidator #-}
+mkSwapValidator :: SwapParam -> SwapDatum -> SwapRedeemer -> ScriptContext -> Bool
+mkSwapValidator param _ _ ctx =
+     traceIfFalse "Seller not paid correctly" sellerPaid
+  && traceIfFalse "Buyer did not receive all NFTs" buyerGetsNFTs
+  && traceIfFalse "Not signed by both parties" bothSigned
+  && traceIfFalse "Swap expired" notExpired
+  where
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
+    spToken :: AssetClass
+    spToken = AssetClass (spTokenCS param, spTokenTN param)
+
+    -- Seller must receive agreed token amount
+    sellerPaid :: Bool
+    sellerPaid =
+      let received = valuePaidTo info (spSeller param)
+      in  assetClassValueOf received spToken >= spPrice param
+
+    -- Buyer must receive all NFTs in any single output to buyer's address
+    buyerGetsNFTs :: Bool
+    buyerGetsNFTs =
+      let outputs = txInfoOutputs info
+          hasNFT (cs, tn) = any (\o ->
+                valueOf (txOutValue o) cs tn >= 1
+             && txOutAddress o == pubKeyHashAddress (spBuyer param)
+            ) outputs
+      in  all hasNFT (spNFTs param)
+
+    -- Both parties must sign
+    bothSigned :: Bool
+    bothSigned = txSignedBy info (spBuyer param) && txSignedBy info (spSeller param)
+
+    -- Swap not expired (or disabled if expiry == 0)
+    notExpired :: Bool
+    notExpired = contains (from 0) (to (spExpiry param)) || spExpiry param == 0
+</code></pre>
+<p>The validator makes four independent checks:</p>
+<ul>
+  <li><strong>sellerPaid</strong>: The seller is credited with <code>spPrice</code> of the stated token.</li>
+  <li><strong>buyerGetsNFTs</strong>: The buyer receives every NFT listed in <code>spNFTs</code>.</li>
+  <li><strong>bothSigned</strong>: Both the buyer and seller sign the transaction (simple 2‑party consent).</li>
+  <li><strong>notExpired</strong>: Transaction occurs at/before <code>spExpiry</code> (unless expiry = 0).</li>
+</ul>
+<div class="callout"><strong>Why no continuing output?</strong> This contract performs a one‑shot atomic swap; it simply validates payments and signatures, then consumes the script UTxO.</div>
+
+<h2 id="wrapper">5. 🎁 Untyped Wrapper</h2>
+<pre><code>{-# INLINABLE wrappedSwapValidator #-}
+wrappedSwapValidator :: SwapParam -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+wrappedSwapValidator param datum redeemer ctx =
+  check (mkSwapValidator param d r c)
+  where
+    d = unsafeFromBuiltinData datum
+    r = unsafeFromBuiltinData redeemer
+    c = unsafeFromBuiltinData ctx
+    check True  = ()
+    check False = error ()
+</code></pre>
+<p>Wraps the typed validator for Plutus’ untyped entrypoint.</p>
+
+<h2 id="compile">6. 💾 Compilation &amp; Instance</h2>
+<pre><code>validatorCode :: PlutusTx.CompiledCode (SwapParam -> BuiltinData -> BuiltinData -> BuiltinData -> ())
+validatorCode = $$(PlutusTx.compile [|| wrappedSwapValidator ||])
+
+mkSwapInstance :: SwapParam -> Validator
+mkSwapInstance param = mkValidatorScript (validatorCode PlutusTx.applyCode PlutusTx.liftCode param)
+</code></pre>
+<ul>
+  <li><code>compile</code>: Converts Haskell to Plutus Core.</li>
+  <li><code>applyCode + liftCode</code>: Specialize with your <code>SwapParam</code>.</li>
+</ul>
+
+<h2 id="usage">7. 🚀 Instantiate &amp; Use</h2>
+<ol>
+  <li><strong>Pick parameters</strong>: seller/buyer PKHs, NFT list, payment asset (policy+token), price, and expiry.</li>
+  <li><strong>Create script UTxO</strong> at <code>mkSwapInstance params</code> address with the NFTs locked (or with funds, depending on direction).</li>
+  <li><strong>Build the swap tx</strong> that:
+    <ul>
+      <li>Pays <code>spPrice</code> tokens to <code>spSeller</code>.</li>
+      <li>Sends each NFT in <code>spNFTs</code> to <code>spBuyer</code>.</li>
+      <li>Is signed by both parties.</li>
+      <li>Respects the expiry window (or set it to 0 to disable).</li>
+    </ul>
+  </li>
+  <li><strong>Submit</strong> the transaction; if all checks pass, the swap succeeds atomically.</li>
+</ol>
+
+<h2 id="pitfalls">8. 🧭 Pitfalls &amp; Notes</h2>
+<ul>
+  <li><strong>Address matching:</strong> <code>pubKeyHashAddress</code> is used for the buyer. If your environment uses different address formats (e.g., staking credentials), adapt the check.</li>
+  <li><strong>Multiple outputs:</strong> The buyer check scans all outputs and accepts any that meet the minimum (≥1 of each NFT).</li>
+  <li><strong>Fees/Change:</strong> The validator doesn’t restrict other values as long as seller and buyer requirements are met.</li>
+  <li><strong>Time:</strong> The expiry uses <code>contains (from 0) (to expiry)</code>. Set <code>spExpiry = 0</code> to remove the limit.</li>
+  <li><strong>Fungible token decimals:</strong> <code>spPrice</code> is in on‑chain integer units. Ensure your off‑chain code uses correct scaling.</li>
+</ul>
+
+<h2 id="glossary">9. 📘 Glossary</h2>
+<table>
+  <thead>
+    <tr><th>🔹 Term</th><th>💬 Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>SwapParam</code></td><td>All constants chosen off‑chain for the swap.</td></tr>
+    <tr><td><code>AssetClass</code></td><td>Pair (policy id, token name) identifying a token.</td></tr>
+    <tr><td><code>valuePaidTo</code></td><td>Aggregated <code>Value</code> paid to a PKH in the tx.</td></tr>
+    <tr><td><code>txSignedBy</code></td><td>Checks that a PKH signed the transaction.</td></tr>
+    <tr><td><code>POSIXTime</code></td><td>Ledger time type used for validity intervals.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="appendix">10. 📎 Appendix: Full Module</h2>
+<pre><code>{-# LANGUAGE DataKinds          #-}
+{-# LANGUAGE NoImplicitPrelude  #-}
+{-# LANGUAGE TemplateHaskell    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+
+module Swap where
+
+import Prelude (IO, print)
+import Plutus.V2.Ledger.Api
+import Plutus.V2.Ledger.Contexts (txSignedBy, valuePaidTo, txInfoOutputs)
+import PlutusTx
+import PlutusTx.Prelude hiding (Semigroup(..), unless, print)
+import Plutus.V1.Ledger.Value (assetClassValueOf, valueOf, AssetClass(..))
+import Plutus.V1.Ledger.Address (pubKeyHashAddress)
+import Plutus.V1.Ledger.Interval (from, to, contains)
+
+------------------------------------------------------------
+-- ON-CHAIN TYPES
+------------------------------------------------------------
+
+data SwapParam = SwapParam
+    { spSeller      :: PubKeyHash
+    , spBuyer       :: PubKeyHash
+    , spNFTs        :: [(CurrencySymbol, TokenName)] -- Multiple NFTs
+    , spTokenCS     :: CurrencySymbol
+    , spTokenTN     :: TokenName
+    , spPrice       :: Integer
+    , spExpiry      :: POSIXTime
+    }
+PlutusTx.unstableMakeIsData ''SwapParam
+PlutusTx.makeLift ''SwapParam
+
+data SwapDatum = SwapDatum
+PlutusTx.unstableMakeIsData ''SwapDatum
+
+data SwapRedeemer = SwapRedeemer
+PlutusTx.unstableMakeIsData ''SwapRedeemer
+
+------------------------------------------------------------
+-- VALIDATOR LOGIC
+------------------------------------------------------------
+
+{-# INLINABLE mkSwapValidator #-}
+mkSwapValidator :: SwapParam -> SwapDatum -> SwapRedeemer -> ScriptContext -> Bool
+mkSwapValidator param _ _ ctx =
+    traceIfFalse "Seller not paid correctly" sellerPaid &&
+    traceIfFalse "Buyer did not receive all NFTs" buyerGetsNFTs &&
+    traceIfFalse "Not signed by both parties" bothSigned &&
+    traceIfFalse "Swap expired" notExpired
+  where
+    info :: TxInfo
+    info = scriptContextTxInfo ctx
+
+    spToken :: AssetClass
+    spToken = AssetClass (spTokenCS param, spTokenTN param)
+
+    -- Seller must receive agreed token amount
+    sellerPaid :: Bool
+    sellerPaid =
+        let received = valuePaidTo info (spSeller param)
+        in assetClassValueOf received spToken >= spPrice param
+
+    -- Buyer must receive all NFTs
+    buyerGetsNFTs :: Bool
+    buyerGetsNFTs =
+        let outputs = txInfoOutputs info
+            hasNFT (cs, tn) = any (\o ->
+                valueOf (txOutValue o) cs tn >= 1 &&
+                txOutAddress o == pubKeyHashAddress (spBuyer param)) outputs
+        in all hasNFT (spNFTs param)
+
+    -- Both parties must sign
+    bothSigned :: Bool
+    bothSigned = txSignedBy info (spBuyer param) && txSignedBy info (spSeller param)
+
+    -- Swap not expired
+    notExpired :: Bool
+    notExpired = contains (from 0) (to (spExpiry param)) || spExpiry param == 0
+
+------------------------------------------------------------
+-- WRAPPER
+------------------------------------------------------------
+
+{-# INLINABLE wrappedSwapValidator #-}
+wrappedSwapValidator :: SwapParam -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+wrappedSwapValidator param datum redeemer ctx =
+    check (mkSwapValidator param d r c)
+  where
+    d = unsafeFromBuiltinData datum
+    r = unsafeFromBuiltinData redeemer
+    c = unsafeFromBuiltinData ctx
+    check True  = ()
+    check False = error ()
+
+------------------------------------------------------------
+-- COMPILED PARAMETERISED VALIDATOR
+------------------------------------------------------------
+
+validatorCode :: PlutusTx.CompiledCode (SwapParam -> BuiltinData -> BuiltinData -> BuiltinData -> ())
+validatorCode = $$(PlutusTx.compile [|| wrappedSwapValidator ||])
+
+mkSwapInstance :: SwapParam -> Validator
+mkSwapInstance param = mkValidatorScript (validatorCode PlutusTx.applyCode PlutusTx.liftCode param)
+
+------------------------------------------------------------
+-- MAIN
+------------------------------------------------------------
+
+main :: IO ()
+main = print "✅ NFT/Token Swap Validator compiled successfully!"
+</code></pre>
+
+</body>
+</html>

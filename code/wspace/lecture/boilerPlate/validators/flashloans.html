@@ -1,0 +1,71 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Flash Loan Smart Contract Tutorial</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 2rem; line-height: 1.6; background: #fff; color: #333; }
+        h1, h2, h3 { color: #2c3e50; }
+        code, pre { background: #f4f4f4; padding: 0.5rem; display: block; border-radius: 5px; overflow-x: auto; }
+        ul { margin-bottom: 1rem; }
+        .glossary dt { font-weight: bold; margin-top: 0.5rem; }
+        .glossary dd { margin-left: 1rem; margin-bottom: 0.5rem; }
+        a { color: #2980b9; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>📘 Flash Loan Smart Contract Tutorial</h1>
+
+    <h2>📑 Table of Contents</h2>
+    <ul>
+        <li><a href="#1">1️⃣ Flash Loan Types</a></li>
+        <li><a href="#2">2️⃣ Validator Logic</a></li>
+        <li><a href="#3">3️⃣ Wrapper for BuiltinData</a></li>
+        <li><a href="#4">4️⃣ Compile the Validator</a></li>
+        <li><a href="#5">5️⃣ File Output and Hash Display</a></li>
+        <li><a href="#glossary">📚 Glossary</a></li>
+        <li><a href="#code">💻 Full Source Code</a></li>
+    </ul>
+
+    <h2 id="1">1️⃣ Flash Loan Types</h2>
+    <p>This section defines the main types:</p>
+    <ul>
+        <li><code>FlashParams</code>: Contains the <strong>owner's public key hash</strong>.</li>
+        <li><code>FlashDatum</code>: Represents loan state: <strong>borrower</strong> and <strong>loan amount</strong>.</li>
+        <li><code>FlashRedeemer</code>: Enum with <code>Borrow</code> and <code>Repay</code>.</li>
+    </ul>
+
+    <h2 id="2">2️⃣ Validator Logic</h2>
+    <p>The <code>mkValidator</code> function enforces two branches:</p>
+    <ul>
+        <li><strong>Borrow</strong>: Requires the borrower to sign.</li>
+        <li><strong>Repay</strong>: Validates that repayment (to the owner) is greater than or equal to the borrowed amount.</li>
+    </ul>
+    <p>Security is guaranteed by checking signatures and values.</p>
+
+    <h2 id="3">3️⃣ Wrapper for BuiltinData</h2>
+    <p>The wrapper <code>validatorWrapper</code> converts raw <code>BuiltinData</code> into the appropriate types, making it Plutus-compatible.</p>
+
+    <h2 id="4">4️⃣ Compile the Validator</h2>
+    <p>This section uses Template Haskell and <code>PlutusTx.compile</code> to produce an on-chain script from our validator logic.</p>
+
+    <h2 id="5">5️⃣ File Output and Hash Display</h2>
+    <p>The script is written to disk and its hash and address are printed for on-chain deployment reference.</p>
+
+    <h2 id="glossary">📚 Glossary</h2>
+    <dl class="glossary">
+        <dt>Flash Loan</dt><dd>A loan borrowed and repaid in the same transaction.</dd>
+        <dt>Validator</dt><dd>Smart contract script that determines if a transaction is valid.</dd>
+        <dt>Datum</dt><dd>Persistent data stored with a UTxO.</dd>
+        <dt>Redeemer</dt><dd>Data provided when spending a UTxO to indicate the action.</dd>
+        <dt>ScriptContext</dt><dd>Information about the spending transaction.</dd>
+        <dt>BuiltinData</dt><dd>Raw, serialised data passed to validators.</dd>
+    </dl>
+
+
+
+</body>
+</html>

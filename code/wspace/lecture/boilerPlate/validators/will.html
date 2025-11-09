@@ -1,0 +1,344 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>📜 Tutorial: Will.hs — Time‑Locked Estate Distribution (Plutus V2)</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 0; padding: 2px; line-height: 1.6; background: #fff; color: #222; }
+    h1, h2, h3 { color: #002b45; }
+    pre { background: #f0f0f0; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    code { font-family: monospace; background: #fdfdfd; padding: 2px 4px; border-radius: 4px; color: #c7254e; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    table, th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f0f8ff; color: #002b45; }
+    a { color: #0077cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .callout { border-left: 4px solid #0077cc; background: #f4f9ff; padding: 10px 12px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+
+<h1>📜 Tutorial: Understanding and Using <code>Will.hs</code></h1>
+<p>This tutorial explains a realistic <strong>estate (will) validator</strong> for Plutus V2. The script holds an estate until a configurable <em>unlock time</em>, after which the <strong>executor</strong> can distribute assets to <strong>beneficiaries</strong> as specified. The <strong>testator</strong> may <em>revoke</em> the will before that time.</p>
+
+<h2>📑 Table of Contents</h2>
+<ol>
+  <li><a href="#ext">⚙️ Language Extensions</a></li>
+  <li><a href="#imports">📦 Module Imports</a></li>
+  <li><a href="#types">🧱 On‑Chain Types</a></li>
+  <li><a href="#logic">🛡️ Core Validator Logic</a></li>
+  <li><a href="#helpers">🔧 Helper Functions</a></li>
+  <li><a href="#wrapper">🎁 Untyped Wrapper</a></li>
+  <li><a href="#compile">💾 Compilation &amp; Address</a></li>
+  <li><a href="#usage">🚀 Instantiate &amp; Use</a></li>
+  <li><a href="#tests">🧪 Emulator Tests (Ideas)</a></li>
+  <li><a href="#pitfalls">🧭 Pitfalls &amp; Security Notes</a></li>
+  <li><a href="#glossary">📘 Glossary</a></li>
+  <li><a href="#appendix">📎 Appendix: Full Module</a></li>
+</ol>
+
+<h2 id="ext">1. ⚙️ Language Extensions</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
+</code></pre>
+<ul>
+  <li><strong>NoImplicitPrelude</strong>: use <code>PlutusTx.Prelude</code> on-chain.</li>
+  <li><strong>TemplateHaskell</strong>: compile and specialize the validator.</li>
+  <li><strong>Derive*</strong>: convenient (de)serialization and lifting.</li>
+</ul>
+
+<h2 id="imports">2. 📦 Module Imports</h2>
+<pre><code>import PlutusTx
+import PlutusTx.Prelude hiding (Semigroup(..), unless)
+import Prelude (IO, print)
+import GHC.Generics (Generic)
+
+import Plutus.V2.Ledger.Api
+  ( BuiltinData, ScriptContext(..), TxInfo(..), POSIXTime, PubKeyHash
+  , Validator, mkValidatorScript, ValidatorHash, Address(..), Credential(..)
+  , OutputDatum(..), Datum(..), TxOut(..)
+  , CurrencySymbol, TokenName )
+import Plutus.V2.Ledger.Contexts
+  ( scriptContextTxInfo, txInfoValidRange, getContinuingOutputs
+  , txSignedBy, valuePaidTo )
+import Plutus.V1.Ledger.Interval (from, to, contains)
+import Plutus.V1.Ledger.Value (valueOf)
+</code></pre>
+
+<h2 id="types">3. 🧱 On‑Chain Types</h2>
+<h3>3.1 <code>AssetSpec</code></h3>
+<pre><code>data AssetSpec = AssetSpec
+  { asCS  :: CurrencySymbol
+  , asTN  :: TokenName
+  , asQty :: Integer
+  }
+PlutusTx.unstableMakeIsData ''AssetSpec
+PlutusTx.makeLift         ''AssetSpec
+</code></pre>
+<p>Represents a token requirement (policy, token name, amount). Use ADA by supplying the ADA policy/token pair your off‑chain code uses.</p>
+
+<h3>3.2 <code>Beneficiary</code></h3>
+<pre><code>data Beneficiary = Beneficiary
+  { bPkh    :: PubKeyHash
+  , bAssets :: [AssetSpec]
+  }
+PlutusTx.unstableMakeIsData ''Beneficiary
+PlutusTx.makeLift         ''Beneficiary
+</code></pre>
+
+<h3>3.3 <code>WillParams</code></h3>
+<pre><code>data WillParams = WillParams
+  { wpTestator   :: PubKeyHash
+  , wpExecutor   :: PubKeyHash
+  , wpUnlockTime :: POSIXTime
+  , wpPlan       :: [Beneficiary]
+  }
+PlutusTx.unstableMakeIsData ''WillParams
+PlutusTx.makeLift         ''WillParams
+</code></pre>
+
+<h3>3.4 Datum &amp; Redeemer</h3>
+<pre><code>data WillDatum = WillDatum
+PlutusTx.unstableMakeIsData ''WillDatum
+
+data WillAction = Execute | Revoke
+PlutusTx.unstableMakeIsData ''WillAction
+</code></pre>
+<p>We don’t store evolving state—only which action is attempted.</p>
+
+<h2 id="logic">4. 🛡️ Core Validator Logic</h2>
+<pre><code>{-# INLINABLE mkWillValidator #-}
+mkWillValidator :: WillParams -> WillDatum -> WillAction -> ScriptContext -> Bool
+mkWillValidator params _ action ctx =
+  case action of
+    Execute ->
+         traceIfFalse "executor signature missing"   (txSignedBy info (wpExecutor params))
+      && traceIfFalse "too early to execute"         (isOnOrAfter (wpUnlockTime params) info)
+      && traceIfFalse "plan not satisfied"           (planSatisfied info (wpPlan params))
+      && traceIfFalse "must close script (no cont)"  (null (getContinuingOutputs ctx))
+    Revoke  ->
+         traceIfFalse "not testator"                 (txSignedBy info (wpTestator params))
+      && traceIfFalse "too late to revoke"           (isStrictlyBefore (wpUnlockTime params) info)
+  where
+    info = scriptContextTxInfo ctx
+</code></pre>
+<p><strong>Execute</strong> requires executor signature, time window on/after unlock, payments to all beneficiaries, and <em>no continuing outputs</em> (the script closes). <strong>Revoke</strong> requires testator signature before unlock.</p>
+
+<h2 id="helpers">5. 🔧 Helper Functions</h2>
+<pre><code>{-# INLINABLE isOnOrAfter #-}
+isOnOrAfter :: POSIXTime -> TxInfo -> Bool
+isOnOrAfter t info = contains (from t) (txInfoValidRange info)
+
+{-# INLINABLE isStrictlyBefore #-}
+isStrictlyBefore :: POSIXTime -> TxInfo -> Bool
+isStrictlyBefore t info = contains (to t) (txInfoValidRange info)
+
+{-# INLINABLE planSatisfied #-}
+planSatisfied :: TxInfo -> [Beneficiary] -> Bool
+planSatisfied info bs = all (beneficiaryPaid info) bs
+
+{-# INLINABLE beneficiaryPaid #-}
+beneficiaryPaid :: TxInfo -> Beneficiary -> Bool
+beneficiaryPaid info (Beneficiary pkh specs) =
+  let received = valuePaidTo info pkh
+  in all (\(AssetSpec cs tn q) -> valueOf received cs tn >= q) specs
+</code></pre>
+
+<h2 id="wrapper">6. 🎁 Untyped Wrapper</h2>
+<pre><code>{-# INLINABLE mkWrapped #-}
+mkWrapped :: WillParams -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkWrapped params d r c =
+  let _datum = unsafeFromBuiltinData d :: WillDatum
+      act    = unsafeFromBuiltinData r :: WillAction
+      ctx    = unsafeFromBuiltinData c :: ScriptContext
+  in  check (mkWillValidator params _datum act ctx)
+  where
+    check True  = ()
+    check False = traceError "will validation failed"
+</code></pre>
+
+<h2 id="compile">7. 💾 Compilation &amp; Address</h2>
+<pre><code>validator :: WillParams -> Validator
+validator params =
+  mkValidatorScript (
+    $$(PlutusTx.compile [|| \ps -> mkWrapped ps ||])
+      `PlutusTx.applyCode` PlutusTx.liftCode params )
+
+validatorHash' :: WillParams -> ValidatorHash
+validatorHash' = validatorHash . validator
+
+validatorAddress :: WillParams -> Address
+validatorAddress ps = Address (ScriptCredential (validatorHash' ps)) Nothing
+</code></pre>
+<ul>
+  <li><code>compile</code> + <code>applyCode</code>: parameterize the validator at build time.</li>
+  <li><code>validatorAddress</code>: construct the on-chain script address.</li>
+</ul>
+
+<h2 id="usage">8. 🚀 Instantiate &amp; Use</h2>
+<ol>
+  <li><strong>Choose params</strong> (<code>WillParams</code>): <em>testator</em>, <em>executor</em>, <em>unlock time</em>, and a <em>plan</em> of beneficiaries + asset specs.</li>
+  <li><strong>Lock estate</strong> at <code>validatorAddress params</code> with sufficient ADA/tokens to satisfy the plan.</li>
+  <li><strong>Execute</strong> (after unlock): executor submits a tx that pays each beneficiary at least the required amounts and consumes the script (no continuing outputs).</li>
+  <li><strong>Revoke</strong> (before unlock): testator spends the script output to themselves (free to reorganize funds).</li>
+</ol>
+<div class="callout"><strong>Note:</strong> If rounding or fees affect exact values, pay beneficiaries from additional inputs; the validator only checks minimums via <code>valuePaidTo</code>.</div>
+
+<h2 id="tests">9. 🧪 Emulator Tests (Ideas)</h2>
+<ul>
+  <li>Happy path <em>Execute</em>: valid time, executor signed, each beneficiary paid, script closes.</li>
+  <li>Early execute: time before unlock → fails with “too early to execute”.</li>
+  <li>Missing payout: one beneficiary underpaid → fails with “plan not satisfied”.</li>
+  <li>Extra continuing output: produce a continuing output → fails with “must close script”.</li>
+  <li><em>Revoke</em> by non‑testator: fails with “not testator”.</li>
+  <li><em>Revoke</em> at/after unlock: fails with “too late to revoke”.</li>
+</ul>
+
+<h2 id="pitfalls">10. 🧭 Pitfalls &amp; Security Notes</h2>
+<ul>
+  <li><strong>Time zones:</strong> Always build transactions with explicit UTC times; validate against slot/time conversion off‑chain.</li>
+  <li><strong>Unit mismatch:</strong> Ensure ADA vs token units are correct; use integer token amounts.</li>
+  <li><strong>Multiple will UTxOs:</strong> If you split estate across UTxOs, enforce the same parameters or extend logic to aggregate.</li>
+  <li><strong>Revocation policy:</strong> If you need <em>soft close</em> (e.g., mark executed), add a datum state and require one continuing output with <code>Executed</code> flag.</li>
+</ul>
+
+<h2 id="glossary">11. 📘 Glossary</h2>
+<table>
+  <thead>
+    <tr><th>🔹 Term</th><th>💬 Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Testator</code></td><td>Owner of the estate who can revoke before unlock time.</td></tr>
+    <tr><td><code>Executor</code></td><td>Authorized party to distribute assets on/after unlock.</td></tr>
+    <tr><td><code>Beneficiary</code></td><td>Recipient defined in the plan.</td></tr>
+    <tr><td><code>Unlock Time</code></td><td>Earliest <code>POSIXTime</code> at which execution is allowed.</td></tr>
+    <tr><td><code>valuePaidTo</code></td><td>Sum of all values paid to a given public key hash in the tx.</td></tr>
+    <tr><td><code>Continuing Output</code></td><td>Output back to the same script; here we forbid it on <em>Execute</em>.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="appendix">12. 📎 Appendix: Full Module</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
+
+module Will where
+
+import PlutusTx
+import PlutusTx.Prelude hiding (Semigroup(..), unless)
+import Prelude (IO, print)
+import GHC.Generics (Generic)
+
+import Plutus.V2.Ledger.Api
+  ( BuiltinData, ScriptContext(..), TxInfo(..), POSIXTime, PubKeyHash
+  , Validator, mkValidatorScript, ValidatorHash, Address(..), Credential(..)
+  , OutputDatum(..), Datum(..), TxOut(..)
+  , CurrencySymbol, TokenName )
+import Plutus.V2.Ledger.Contexts
+  ( scriptContextTxInfo, txInfoValidRange, getContinuingOutputs
+  , txSignedBy, valuePaidTo )
+import Plutus.V1.Ledger.Interval (from, to, contains)
+import Plutus.V1.Ledger.Value (valueOf)
+
+-- TYPES
+
+data AssetSpec = AssetSpec { asCS :: CurrencySymbol, asTN :: TokenName, asQty :: Integer }
+PlutusTx.unstableMakeIsData ''AssetSpec
+PlutusTx.makeLift         ''AssetSpec
+
+data Beneficiary = Beneficiary { bPkh :: PubKeyHash, bAssets :: [AssetSpec] }
+PlutusTx.unstableMakeIsData ''Beneficiary
+PlutusTx.makeLift         ''Beneficiary
+
+data WillParams = WillParams
+  { wpTestator   :: PubKeyHash
+  , wpExecutor   :: PubKeyHash
+  , wpUnlockTime :: POSIXTime
+  , wpPlan       :: [Beneficiary]
+  }
+PlutusTx.unstableMakeIsData ''WillParams
+PlutusTx.makeLift         ''WillParams
+
+data WillDatum = WillDatum
+PlutusTx.unstableMakeIsData ''WillDatum
+
+data WillAction = Execute | Revoke
+PlutusTx.unstableMakeIsData ''WillAction
+
+-- VALIDATOR
+
+{-# INLINABLE mkWillValidator #-}
+mkWillValidator :: WillParams -> WillDatum -> WillAction -> ScriptContext -> Bool
+mkWillValidator params _ action ctx = case action of
+  Execute ->
+       traceIfFalse "executor signature missing"   (txSignedBy info (wpExecutor params))
+    && traceIfFalse "too early to execute"         (isOnOrAfter (wpUnlockTime params) info)
+    && traceIfFalse "plan not satisfied"           (planSatisfied info (wpPlan params))
+    && traceIfFalse "must close script (no cont)"  (null (getContinuingOutputs ctx))
+  Revoke  ->
+       traceIfFalse "not testator"                 (txSignedBy info (wpTestator params))
+    && traceIfFalse "too late to revoke"           (isStrictlyBefore (wpUnlockTime params) info)
+  where
+    info = scriptContextTxInfo ctx
+
+{-# INLINABLE isOnOrAfter #-}
+isOnOrAfter :: POSIXTime -> TxInfo -> Bool
+isOnOrAfter t info = contains (from t) (txInfoValidRange info)
+
+{-# INLINABLE isStrictlyBefore #-}
+isStrictlyBefore :: POSIXTime -> TxInfo -> Bool
+isStrictlyBefore t info = contains (to t) (txInfoValidRange info)
+
+{-# INLINABLE planSatisfied #-}
+planSatisfied :: TxInfo -> [Beneficiary] -> Bool
+planSatisfied info bs = all (beneficiaryPaid info) bs
+
+{-# INLINABLE beneficiaryPaid #-}
+beneficiaryPaid :: TxInfo -> Beneficiary -> Bool
+beneficiaryPaid info (Beneficiary pkh specs) =
+  let received = valuePaidTo info pkh
+  in all (\(AssetSpec cs tn q) -> valueOf received cs tn >= q) specs
+
+-- WRAPPER & COMPILE
+
+{-# INLINABLE mkWrapped #-}
+mkWrapped :: WillParams -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkWrapped params d r c =
+  let _datum = unsafeFromBuiltinData d :: WillDatum
+      act    = unsafeFromBuiltinData r :: WillAction
+      ctx    = unsafeFromBuiltinData c :: ScriptContext
+  in  check (mkWillValidator params _datum act ctx)
+  where
+    check True  = ()
+    check False = traceError "will validation failed"
+
+validator :: WillParams -> Validator
+validator params =
+  mkValidatorScript (
+    $$(PlutusTx.compile [|| \ps -> mkWrapped ps ||])
+      `PlutusTx.applyCode` PlutusTx.liftCode params )
+
+validatorHash' :: WillParams -> ValidatorHash
+validatorHash' = validatorHash . validator
+
+validatorAddress :: WillParams -> Address
+validatorAddress ps = Address (ScriptCredential (validatorHash' ps)) Nothing
+
+main :: IO ()
+main = print "✅ Will validator compiled successfully!"
+</code></pre>
+
+</body>
+</html>
