@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>🧩 Lock-by-Deadline & Beneficiary — UniversalTestLockUnlock Tutorial</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      /* Light gray theme */
+      --bg:#f5f7fa;            /* page background */
+      --panel:#ffffff;         /* cards/panels */
+      --ink:#111827;           /* primary text */
+      --muted:#6b7280;         /* secondary text */
+      --accent:#2563eb;        /* links & accents */
+      --code-bg:#f8fafc;       /* code block bg */
+      --code-border:#e5e7eb;   /* code block border */
+      --kbd:#eef2f7;           /* inline code bg */
+      --panel-border:#e6e8ee;  /* card border */
+      --rule:#e5e7eb;          /* hr */
+      --ok:#0d9488;            /* success */
+      --warn:#b45309;          /* warning */
+      --danger:#b91c1c;        /* danger */
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji");}
+    main{max-width:980px;margin:40px auto;padding:0 20px;}
+    h1{font-size:2rem;line-height:1.25;margin:0 0 10px;}
+    h2{font-size:1.5rem;margin:32px 0 10px;}
+    h3{font-size:1.15rem;margin:22px 0 8px;color:#1f2937;}
+    p{margin:10px 0;}
+    ul,ol{margin:8px 0 16px 22px;}
+    code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;}
+    code{background:var(--kbd);padding:.15em .35em;border-radius:6px;}
+    pre{background:var(--code-bg);border:1px solid var(--code-border);border-radius:12px;padding:14px;overflow:auto;}
+    pre code{background:none;padding:0;white-space:pre;}
+    a{color:var(--accent);text-decoration:none;}
+    a:hover{text-decoration:underline;}
+    .lead{color:var(--muted);margin-top:6px}
+    .toc a{display:block;padding:6px 0;color:var(--ink)}
+    .toc a:hover{color:var(--accent)}
+    .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:18px;margin:18px 0;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+    .badge{display:inline-block;background:#e8f1ff;color:#1e3a8a;border:1px solid #c7ddff;padding:2px 8px;border-radius:999px;font-size:.8rem;margin-left:.5rem;vertical-align:middle}
+    hr{border:none;height:1px;background:var(--rule);margin:28px 0;}
+    .note{border-left:4px solid var(--accent);padding:10px 14px;background:#eef4ff;border-radius:8px;color:#0f1e3a}
+    .warn{border-left:4px solid var(--warn);padding:10px 14px;background:#fff5e6;border-radius:8px;color:#3b2710}
+    .ok{border-left:4px solid var(--ok);padding:10px 14px;background:#ecfdf5;border-radius:8px;color:#083b37}
+    .danger{border-left:4px solid var(--danger);padding:10px 14px;background:#fef2f2;border-radius:8px;color:#3f1010}
+    .k{background:var(--kbd);border-radius:6px;padding:.12em .4em;}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;}
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>🧩 Lock-by-Deadline &amp; Beneficiary — A Practical Tutorial</h1>
+      <p class="lead">Build and export a Plutus V2 validator using your Universal rules engine: “Spend only after deadline and signed by beneficiary”.</p>
+    </header>
+
+    <section class="toc card" id="toc">
+      <h2>📑 Table of Contents</h2>
+      <ol>
+        <li><a href="#sec-1">🔭 Overview</a></li>
+        <li><a href="#sec-2">🧱 Module Purpose &amp; Dependencies</a></li>
+        <li><a href="#sec-3">🧠 Contract Logic</a></li>
+        <li><a href="#sec-4">🛠️ API Walkthrough</a></li>
+        <li><a href="#sec-5">🧪 Quick Start (Hard-coded Example)</a></li>
+        <li><a href="#sec-6">🧾 Serialisation (CBOR &amp; Text Envelope)</a></li>
+        <li><a href="#sec-7">🧰 Helper: Hex → PubKeyHash</a></li>
+        <li><a href="#sec-8">🏗️ Build &amp; Run with Cabal</a></li>
+        <li><a href="#sec-9">🔍 Validate the Output</a></li>
+        <li><a href="#sec-10">🧯 Troubleshooting &amp; Pitfalls</a></li>
+        <li><a href="#sec-11">📚 Glossary</a></li>
+      </ol>
+    </section>
+
+    <section id="sec-1">
+      <h2>1) 🔭 Overview</h2>
+      <p><strong>UniversalTestLockUnlock</strong> instantiates your <em>Universal</em> rules engine for a classic vesting-style rule:</p>
+      <ul>
+        <li>✅ Transaction must be <strong>signed</strong> by the <em>beneficiary</em></li>
+        <li>✅ Transaction must occur <strong>after</strong> a given <em>deadline</em> (<code>POSIXTime</code> in <strong>milliseconds</strong>)</li>
+      </ul>
+      <p>It compiles to a <strong>Plutus V2 Validator</strong> and provides helpers to export both <strong>raw CBOR</strong> and a <strong>cardano-cli text envelope</strong>.</p>
+    </section>
+
+    <section id="sec-2">
+      <h2>2) 🧱 Module Purpose &amp; Dependencies</h2>
+      <div class="card">
+        <p><span class="badge">Imports</span></p>
+        <ul>
+          <li><code>Plutus.V2.Ledger.Api</code>: <span class="mono">Validator</span>, <span class="mono">POSIXTime</span>, <span class="mono">PubKeyHash</span>, <span class="mono">unValidatorScript</span></li>
+          <li><code>Universal</code> (your engine): <span class="mono">Params</span>, <span class="mono">Rule</span>, <span class="mono">SpendingSpec</span>, <span class="mono">MintingSpec</span>, <span class="mono">mkSpendingValidator</span></li>
+          <li>Serialisation stack: <code>Codec.Serialise</code> + ByteString (strict &amp; lazy) + Base16</li>
+        </ul>
+      </div>
+      <p class="note"><strong>Note:</strong> The module uses <code>NoImplicitPrelude</code>, so explicit <code>Prelude</code> imports for <span class="mono">IO</span>, <span class="mono">FilePath</span>, <span class="mono">Either(..)</span>, operators (like <span class="mono">*</span>, <span class="mono">$</span>) are included.</p>
+    </section>
+
+    <section id="sec-3">
+      <h2>3) 🧠 Contract Logic</h2>
+      <p>This module doesn’t hard-code validation logic itself; it <em>declares</em> two rules and hands them to the Universal engine:</p>
+      <ul>
+        <li><code>RequireAnySigner [beneficiaryPKH]</code></li>
+        <li><code>ValidAfter deadline</code></li>
+      </ul>
+      <p>The engine evaluates these against the current <code>ScriptContext</code>. If both pass, the spend is allowed.</p>
+    </section>
+
+    <section id="sec-4">
+      <h2>4) 🛠️ API Walkthrough</h2>
+
+      <h3>4.1 <code>mkLockByDeadlineParams</code> ✅</h3>
+      <pre><code class="language-haskell">mkLockByDeadlineParams :: PubKeyHash -&gt; POSIXTime -&gt; Params
+mkLockByDeadlineParams beneficiaryPKH deadline =
+  let spendingRules =
+        [ RequireAnySigner [beneficiaryPKH]
+        , ValidAfter deadline
+        ]
+  in Params
+      { sSpec = SpendingSpec spendingRules
+      , mSpec = MintingSpec []     -- no mint rules
+      , extra = []                 -- spare param slots
+      }</code></pre>
+
+      <h3>4.2 <code>mkLockByDeadlineValidator</code> 🧵</h3>
+      <pre><code class="language-haskell">mkLockByDeadlineValidator :: PubKeyHash -&gt; POSIXTime -&gt; Validator
+mkLockByDeadlineValidator pkh dl =
+  mkSpendingValidator (mkLockByDeadlineParams pkh dl)</code></pre>
+      <p>Compiles your <em>Params</em> into a Plutus V2 validator using the Universal engine’s wrapper.</p>
+    </section>
+
+    <section id="sec-5">
+      <h2>5) 🧪 Quick Start (Hard-coded Example)</h2>
+      <p>Define a beneficiary and a deadline (in <strong>milliseconds</strong>) and write the script in cardano-cli text-envelope format:</p>
+      <pre><code class="language-haskell">-- Example inputs (replace as needed)
+pkh :: PubKeyHash
+pkh = pkhFromHexUnsafe "d57bb0cffa16332aa214bbbf5de72934c9a499fe1dc0d4ff223270a5"
+
+pTime :: POSIXTime
+pTime = 1762758828 * 1000    -- POSIXTime is milliseconds
+
+plutus :: IO ()
+plutus =
+  writeValidatorEnvelope "./assets/lock-by-deadline.plutus"
+    (mkLockByDeadlineValidator pkh pTime)
+
+main :: IO ()
+main = plutus</code></pre>
+      <p class="warn"><strong>Units warning:</strong> If your deadline starts from UNIX <em>seconds</em>, multiply by <code>* 1000</code> to convert to Plutus <em>milliseconds</em>.</p>
+    </section>
+
+    <section id="sec-6">
+      <h2>6) 🧾 Serialisation (CBOR &amp; Text Envelope)</h2>
+
+      <h3>6.1 Raw CBOR (lazy <span class="mono">ByteString</span>)</h3>
+      <pre><code class="language-haskell">serialiseToCBOR :: Validator -&gt; LBS.ByteString
+serialiseToCBOR v =
+  let scr = unValidatorScript v
+  in Serialise.serialise scr
+
+writeValidatorCBOR :: FilePath -&gt; Validator -&gt; IO ()
+writeValidatorCBOR fp v = LBS.writeFile fp (serialiseToCBOR v)</code></pre>
+
+      <h3>6.2 cardano-cli Text Envelope</h3>
+      <pre><code class="language-haskell">serialiseToCBORBytes :: Validator -&gt; BS.ByteString
+serialiseToCBORBytes v = LBS.toStrict (serialiseToCBOR v)
+
+writeValidatorEnvelope :: FilePath -&gt; Validator -&gt; IO ()
+writeValidatorEnvelope fp v = do
+  let cbor = serialiseToCBORBytes v                  -- strict bytes
+      hex  = B16.encode cbor
+      json = LBS.fromStrict $
+               C8.concat
+                 [ C8.pack "{\n  \"type\": \"PlutusScriptV2\",\n  \"description\": \"\",\n  \"cborHex\": \""
+                 , hex
+                 , C8.pack "\"\n}\n"
+                 ]
+  LBS.writeFile fp json</code></pre>
+
+      <div class="ok"><strong>Result:</strong> The output file is directly consumable by <span class="mono">cardano-cli</span>.</div>
+    </section>
+
+    <section id="sec-7">
+      <h2>7) 🧰 Helper: Hex → PubKeyHash</h2>
+      <pre><code class="language-haskell">pkhFromHexUnsafe :: String -&gt; PubKeyHash
+pkhFromHexUnsafe hex =
+  case B16.decode (C.pack hex) of
+    Right raw -&gt; PubKeyHash (Builtins.toBuiltin raw)
+    Left  _   -&gt; error "pkhFromHexUnsafe: invalid hex"</code></pre>
+      <p class="danger"><strong>Unsafe:</strong> This throws on invalid input. For production, prefer a safe variant returning <span class="mono">Either String PubKeyHash</span>.</p>
+    </section>
+
+    <section id="sec-8">
+      <h2>8) 🏗️ Build &amp; Run with Cabal</h2>
+      <div class="card">
+        <p><strong>Executable stanza (example)</strong></p>
+        <pre><code>executable plutus
+  hs-source-dirs:     lecture/boilerPlate
+  main-is:            UniversalTestLockUnlock.hs
+  build-depends:
+      base &gt;=4.14 &amp;&amp; &lt;4.15
+    , plutus-ledger-api
+    , plutus-tx
+    , bytestring
+    , serialise
+    , base16-bytestring
+  default-language:   Haskell2010
+  ghc-options:        -Wall -O2</code></pre>
+      </div>
+      <ol>
+        <li>Create the output folder: <span class="mono">mkdir -p ./assets</span></li>
+        <li>Build: <span class="mono">cabal build plutus</span></li>
+        <li>Run: <span class="mono">cabal run plutus</span></li>
+      </ol>
+      <p class="ok">You should see <span class="mono">./assets/lock-by-deadline.plutus</span> created with a JSON text envelope.</p>
+    </section>
+
+    <section id="sec-9">
+      <h2>9) 🔍 Validate the Output</h2>
+      <p>Open the generated file — it should look like:</p>
+      <pre><code class="language-json">{
+  "type": "PlutusScriptV2",
+  "description": "",
+  "cborHex": "&lt;hex bytes...&gt;"
+}</code></pre>
+      <p>Use <span class="mono">cardano-cli</span> commands to derive the script hash and address, and fund it with a UTxO for testing.</p>
+    </section>
+
+    <section id="sec-10">
+      <h2>10) 🧯 Troubleshooting &amp; Pitfalls</h2>
+      <ul>
+        <li><strong>Deadline units:</strong> Plutus <span class="mono">POSIXTime</span> is <em>milliseconds</em>. If you pass seconds, your rule will unlock ~1000× earlier than intended.</li>
+        <li><strong>NoImplicitPrelude:</strong> Import <span class="mono">Either(..)</span>, <span class="mono">IO</span>, <span class="mono">FilePath</span>, operators (like <span class="mono">*</span>, <span class="mono">$</span>) explicitly.</li>
+        <li><strong>Text envelope vs raw CBOR:</strong> Cardano CLI expects the JSON text envelope, not bare CBOR.</li>
+        <li><strong>Beneficiary key:</strong> Ensure the signer actually holds the payment key that corresponds to the <span class="mono">PubKeyHash</span> you use.</li>
+        <li><strong>Clock skew:</strong> Give a small buffer on the validity interval to account for slot timing.</li>
+      </ul>
+    </section>
+
+    <section id="sec-11">
+      <h2>11) 📚 Glossary</h2>
+      <ul>
+        <li><strong>Validator</strong>: On-chain program controlling spending from a script address.</li>
+        <li><strong>Params</strong>: Serializable configuration captured into the script at compile time.</li>
+        <li><strong>Rule</strong>: Declarative condition checked against <span class="mono">ScriptContext</span>.</li>
+        <li><strong>Text Envelope</strong>: JSON wrapper (<span class="mono">type</span>, <span class="mono">description</span>, <span class="mono">cborHex</span>) used by <span class="mono">cardano-cli</span>.</li>
+        <li><strong>POSIXTime</strong>: Milliseconds since epoch in Plutus.</li>
+      </ul>
+    </section>
+
+    <hr />
+    <footer class="lead">© Lock-by-Deadline Tutorial — generated HTML</footer>
+  </main>
+</body>
+</html>

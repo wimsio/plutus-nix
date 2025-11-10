@@ -1,47 +1,62 @@
 # Changelog
 
-## [1.0.1] - 2025-10-20
+## [1.0.3] - 2025-11-09
 
 ### 🚀 Overview
-This release refines the Plutus vesting validator logic, improves cross-version compatibility, and enhances off-chain utility integration for smoother testing and serialization.  
+
+This is a plinth/plutus-tx-template designed to help plutus students and young developers get started developing Cardano Smart Contract quickly and easily.
+
+Each plutus haskell module has tutorials, compiles and run with cabal repl, making it easy to get started. After running cabal update, cabal build the size should be around 700mb.
 
 **Contributors:** Bernard Sibanda  
 
----
-
 ### ✨ Added
-- Integrated **advanced security checks** in `mkVestingValidator`:
-  - Beneficiary signature verification  
-  - Deadline and validity window limits  
-  - Code integrity matching to prevent double spend  
-  - Output address consistency and datum type safety  
-- Added `Utilities.hs` module for:
-  - `wrapValidator`, `writeValidatorToFile`, and `validatorAddressBech32`
-  - `posixTimeFromIso8601` for ISO 8601 → POSIX conversion  
-  - `printDataToJSON` for readable datum output  
-- Introduced support for **Bech32 address export** and **local validator file generation**
 
----
+index.html :- Haskell Plutus Smart Contract Tutorial Playground
+This displays Smart Contract Examples, Tutorials and demo frontends
+
+Added tutorials for all haskell plutus modules so that each code snippet is explained. 
 
 ### 🧩 Fixed
-- Compatibility with `plutus-ledger-api-1.0.0.1` (removed V3+ API dependencies)
-- Missing imports for:
-  - `Prelude (Show, Integer, IO, String, fromJust)`
-  - `Data.Maybe (fromJust)`
-  - `PlutusTx.Prelude (mempty, (+))`
-  - `Cardano.Api (NetworkId(..), NetworkMagic(..))`
-- Corrected `traceIfFalse` string type errors by enabling `OverloadedStrings`
-- Fixed `fromBuiltinData`, `txOutDatumHash`, and `findDatum` scope errors
 
----
+Bugs due to compiling and building of Vesting, ParameterixedVesting.
 
 ### 🔧 Changed
-- Simplified validity window checks (`interval` and `contains`)
-- Reverted to V2 context-style validator for stability
-- Consolidated helper utilities under one consistent import path
-- Improved documentation and indentation throughout validator code
 
----
+Lecture directory now has boilerPlate with modules for flexible template. 
+Added another directory validators with .js and .html files for plutus source code and frontend demos and tutorials.
+
+### 🔧 Removed
+
+Demo.hs
+DemoSpec.hs
+Mint.hs
+MintSpec.hs
+Escrow.hs
+EscrowSpec.hs
+Donation.hs   
+DonationSpec.hs
 
 ### 👥 Contributors
-- **Bernard Sibanda** — core validator refactor, utility integration, and release preparation
+
+- **Bernard Sibanda** 
+
+### 🔧 Tests
+
+All wspace Tests
+  Vesting Module Tests
+    Validator rejects before deadline:           OK
+    Validator accepts after deadline:            OK
+  Parameterized Vesting Tests
+    fromHexPKH parses valid hex:                 OK
+  CGTime Tests
+    ISO8601 round-trip:                          OK
+  CGPlutusUtils Tests
+    Bech32 round-trip test:                      OK
+  TemplateHaskellDemo Tests
+    greet generates a greeting message:          Hello Bernard Sibanda OK
+    add correctly sums two compile-time numbers: OK
+    volFunction correctly computes volume:       OK
+    gradeFunc returns correct grades:            OK
+    triple cubes numbers correctly:              OK
+
