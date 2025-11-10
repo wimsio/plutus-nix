@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               wspace
-version:            0.1.0.0
+version:            0.1.2.4
 author:             IOG's education team, Bernard Sibanda
 maintainer:         education@iohk.io, cto@wims.io
 license:            Apache-2.0
