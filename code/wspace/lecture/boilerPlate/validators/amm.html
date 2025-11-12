@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+    
+  <meta charset="utf-8" />
+  <title>Constant Product AMM (Cardano/Plutus) — Complete Tutorial</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#ffffff;
+      --card:#ffffff;
+      --text:#111827;          /* slate-900 */
+      --muted:#4b5563;         /* slate-600 */
+      --accent:#1d4ed8;        /* blue-700 */
+      --code:#f8fafc;          /* slate-50 */
+      --border:#e5e7eb;        /* slate-200 */
+      --shadow:0 2px 10px rgba(0,0,0,.06);
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+      line-height:1.65}
+    main{max-width:1024px;margin:3rem auto;padding:0 1.25rem}
+    h1,h2,h3,h4{line-height:1.25;color:#0b1220}
+    h1{font-size:2.2rem;margin:0 0 1rem}
+    h2{font-size:1.6rem;margin-top:2rem}
+    h3{font-size:1.25rem;margin-top:1.25rem}
+    p{margin:.75rem 0}
+    hr{border:0;border-top:1px solid var(--border);margin:2rem 0}
+    .meta{color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem 1.25rem;box-shadow:var(--shadow)}
+    code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    pre{background:var(--code);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:1rem;overflow:auto}
+    code{background:var(--code);border:1px solid var(--border);border-radius:6px;padding:.05rem .35rem}
+    a{color:var(--accent);text-decoration:none}
+    a:hover{text-decoration:underline}
+    ul,ol{padding-left:1.25rem}
+    .toc li{margin:.25rem 0}
+    .pill{display:inline-block;font-size:.9rem;border:1px solid var(--border);border-radius:999px;padding:.2rem .6rem;background:#f3f4f6;color:var(--muted);margin-right:.5rem}
+    blockquote{border-left:4px solid var(--border);margin:1rem 0;padding:.5rem 1rem;color:#374151;background:#f9fafb;border-radius:8px}
+    .kbd{border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;padding:.1rem .35rem;background:#f9fafb}
+  </style>
+  <!-- MathJax for LaTeX math rendering -->
+  <script>
+    window.MathJax = { tex: { inlineMath: [['\\(','\\)'],['\\[','\\]']] } };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Constant Product Automated Market Maker (AMM) DEX — A Complete Tutorial (Cardano/Plutus)</h1>
+    <p class="meta"><span class="pill">Author</span> Coxygen Global &nbsp;•&nbsp; <span class="pill">Date &amp; Time</span> Wednesday, November 12, 2025 at 07:50 (Africa/Johannesburg) &nbsp;•&nbsp; <span class="pill">License</span> MIT</p>
+  </header>
+
+  <hr />
+
+  <section class="card">
+    <h2>Table of Contents</h2>
+    <ol class="toc">
+      <li>🔰 Introduction</li>
+      <li>🧩 Core Concepts and Definitions</li>
+      <li>🏗️ System Architecture (Cardano UTxO)</li>
+      <li>🔄 Core User Flows</li>
+      <li>🧮 Math &amp; Worked Examples</li>
+      <li>🧑‍⚖️ Validator Rules (Haskell/Plutus V2)</li>
+      <li>🛡️ Security Requirements &amp; Threat Model</li>
+      <li>🚀 Scaling to a Uniswap-Class Competitor</li>
+      <li>🧰 Operational Practices &amp; Tooling</li>
+      <li>📚 Glossary of Terms</li>
+      <li>📎 Appendix: Prior Q&amp;A (“You said…”)</li>
+      <li>🧩 Reference Implementation (Compiling <code>AMM.hs</code>)</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>1. 🔰 Introduction</h2>
+    <p>Automated Market Makers (AMMs) replace order books with <strong>on-chain liquidity pools</strong> governed by a simple pricing rule. This tutorial walks you through designing and building a <strong>Constant-Product AMM (CPMM)</strong> DEX on <strong>Cardano</strong> using <strong>Plutus V2</strong>, from core math to validator rules, production-grade security, and a roadmap to scale into a Uniswap-class exchange.</p>
+    <p>This guide is fully synchronized with a <strong>compiling <code>AMM.hs</code></strong> that:</p>
+    <ul>
+      <li>Implements a <strong>pool validator</strong> (AddLiquidity, Swap, RemoveLiquidity)</li>
+      <li>Implements an <strong>LP mint/burn policy</strong> guarded by the pool NFT + participation</li>
+      <li>Uses a configurable <strong>fee in basis points</strong> (<code>Bps</code>), slippage guards, and multiple LPs</li>
+      <li><strong>Exports <code>.plutus</code> files</strong> (cardano-cli text envelopes) for both scripts</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>2. 🧩 Core Concepts and Definitions</h2>
+    <p><strong>LP (Liquidity Provider)</strong> — Deposits both assets into a pool and receives <strong>LP tokens</strong> representing fractional ownership of reserves and fees.</p>
+    <p><strong>CPMM (Constant-Product Market Maker)</strong> — Keeps \(\,x\cdot y \approx k\,\), with fees making \(k\) grow. Spot price ≈ \(y/x\) for X in units of Y.</p>
+    <p><strong>TVL (Total Value Locked)</strong> — Total value of all assets locked in a protocol/pool. Higher TVL ⇒ deeper liquidity ⇒ lower slippage.</p>
+    <p><strong>AMM (Automated Market Maker)</strong> — Smart-contract exchange that quotes prices algorithmically (e.g., CPMM) instead of matching orders.</p>
+    <p><strong>Slippage</strong> — Difference between expected output and actual execution, due to price impact and latency/MEV. Controlled with <code>minOut</code>/<code>maxIn</code>.</p>
+  </section>
+
+  <section>
+    <h2>3. 🏗️ System Architecture (Cardano UTxO)</h2>
+    <h3>3.1 Pool Identity</h3>
+    <ul>
+      <li><strong>Pool NFT</strong> locked in the pool UTxO uniquely identifies the pool across transitions.</li>
+      <li><strong>Pool Datum</strong> stores reserves and (optionally) cached supply hints. In this didactic build:
+        <ul>
+          <li>Reserves: <code>dAdaR</code>, <code>dTokR</code></li>
+          <li>Asset IDs are immutable in <strong><code>PoolParams</code></strong>: token <code>(CS,TN)</code>, LP <code>(CS,TN)</code>, pool NFT <code>(CS,TN)</code></li>
+          <li>Fee rate <code>ppFeeBps :: Bps</code> (e.g., <code>Bps 100</code> = 1%)</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>3.2 Transaction Shape</h3>
+    <ul>
+      <li><strong>Add Liquidity:</strong> 1 pool input → 1 continuing output (NFT preserved), LP <strong>mint</strong> to depositor</li>
+      <li><strong>Swap:</strong> 1 pool input → 1 continuing output, <strong>no LP mint/burn</strong></li>
+      <li><strong>Remove Liquidity:</strong> 1 pool input → 1 continuing output, LP <strong>burn</strong> from withdrawer</li>
+    </ul>
+
+    <h3>3.3 Reference Scripts &amp; Inline Datums</h3>
+    <ul>
+      <li>Prefer <strong>reference scripts</strong> for fee efficiency.</li>
+      <li>Support both <strong><code>OutputDatum</code></strong> and <strong><code>OutputDatumHash</code></strong> (the validator handles either when decoding datums).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>4. 🔄 Core User Flows</h2>
+    <h3>4.1 Pool Creation</h3>
+    <p>1) Mint the <strong>pool NFT</strong>; 2) Create initial pool UTxO with datum <code>{dAdaR=0, dTokR=0}</code> and the NFT; 3) First liquidity <strong>bootstraps</strong> LP supply.</p>
+
+    <h3>4.2 Add Liquidity</h3>
+    <ul>
+      <li>Depositor provides ADA + Token <strong>proportionally</strong> to current reserves.</li>
+      <li>Checks: proportionality, exact reserve deltas, <strong>single</strong> LP mint triple, NFT continuity, datum update.</li>
+    </ul>
+
+    <h3>4.3 Swap (ADA↔Token)</h3>
+    <ul>
+      <li>Trader submits input asset and <code>minOut</code> (slippage tolerance).</li>
+      <li>Checks: fee-adjusted input, CPMM output, exact reserve transitions, <strong>no mint/burn</strong>, NFT continuity.</li>
+    </ul>
+
+    <h3>4.4 Remove Liquidity</h3>
+    <ul>
+      <li>LP burns <code>lpBurn</code>; receives pro-rata ADA and tokens (validator checks via deltas).</li>
+      <li>Checks: exact <strong>LP burn</strong> triple, minimum payouts, reserves do not increase, NFT continuity.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>5. 🧮 Math &amp; Worked Examples</h2>
+    <h3>5.1 Invariant &amp; Price</h3>
+    <p>Without fee: \((x+\Delta x)(y-\Delta y)=xy \Rightarrow \Delta y= \dfrac{\Delta x\,y}{x+\Delta x}\).</p>
+    <p>With fee \(\gamma\): \(\Delta x_\text{eff}=\Delta x(1-\gamma)\) — use \(\Delta x_\text{eff}\) in the formula.</p>
+
+    <h3>5.2 LP Minting (existing pool)</h3>
+    <p>Given reserves <code>(x,y)</code>, total LP <code>L</code>, deposit <code>(Δx,Δy)</code> proportional:</p>
+    <p>\[ \text{LP}_\text{minted} = L\cdot\min\big(\tfrac{\Delta x}{x},\tfrac{\Delta y}{y}\big) \]</p>
+    <p>If perfectly proportional, <code>LP_minted = L*(Δx/x)</code>.</p>
+    <p><strong>Example:</strong> If <code>x</code> receives 10 and you add matching <code>Δy = y*(10/x)</code>, then <code>LP_minted = L*(10/x)</code>.</p>
+
+    <h3>5.3 Bootstrap LP (empty pool)</h3>
+    <p>Common rule: \(\text{LP}_\text{minted} = \lfloor\sqrt{\Delta x\cdot\Delta y}\rfloor\) (optionally scaled), less a small locked minimum.</p>
+
+    <h3>5.4 Slippage</h3>
+    <p><code>slippage% = (expected − actual)/expected × 100%</code>. Guard with <code>minOut</code> or <code>maxIn</code>.</p>
+  </section>
+
+  <section>
+    <h2>6. 🧑‍⚖️ Validator Rules (Haskell/Plutus V2)</h2>
+    <h3>6.1 Types &amp; Instances (on-chain ready)</h3>
+    <ul>
+      <li><strong><code>newtype Bps = Bps Integer</code></strong>
+        <ul>
+          <li><code>PlutusTx.unstableMakeIsData ''Bps</code></li>
+          <li><code>PlutusTx.makeLift ''Bps</code></li>
+        </ul>
+      </li>
+      <li><strong><code>PoolParams</code></strong> — immutable asset IDs and fee bps:
+        <ul>
+          <li><code>PlutusTx.unstableMakeIsData ''PoolParams</code></li>
+          <li><code>PlutusTx.makeLift ''PoolParams</code></li>
+        </ul>
+      </li>
+      <li><strong><code>PoolDatum { dAdaR, dTokR }</code></strong> and <strong><code>Action</code></strong> both derive <code>IsData</code>.</li>
+      <li><strong>Tuple equality</strong> for <code>flattenValue</code> checks uses <code>FlexibleInstances</code> with <code>Eq (CurrencySymbol, TokenName, Integer)</code>.</li>
+    </ul>
+
+    <h3>6.2 Helper Primitives</h3>
+    <ul>
+      <li><code>adaOf</code>, <code>tokOf</code>, <code>lpOf</code>, <code>nftOf</code> for asset extraction; <code>findOwnInput'</code> and <code>decodeDatum</code> for datum loading.</li>
+      <li>Fees &amp; CPMM:
+        <pre><code>feeEff (Bps bps) x = divide (x * (10000 - bps)) 10000
+cpmmOut x y dxEff = if dxEff <= 0 then 0 else divide (dxEff * y) (x + dxEff)</code></pre>
+      </li>
+      <li><code>ensure :: Bool -&gt; ()</code> convenience checker.</li>
+    </ul>
+
+    <h3>6.3 Pool Validator</h3>
+    <pre><code>mkPoolValidator :: PoolParams -&gt; PoolDatum -&gt; Action -&gt; ScriptContext -&gt; Bool</code></pre>
+    <p><strong>Common gates:</strong> 1) Exactly one continuing output; 2) <strong>Pool NFT</strong> present on input and output; 3) Decode pre/post datums; 4) (Optional) forbid foreign assets via <code>flattenValue</code> scan.</p>
+
+    <p><strong>AddLiquidity dAda dTok minLP</strong></p>
+    <ul>
+      <li>Bootstrap allowed when <code>adaR == 0 &amp;&amp; tokR == 0</code> with <code>lpMinted = ⌊√(dAda*dTok)⌋</code>.</li>
+      <li>Otherwise enforce proportionality: <code>dAda*tokR == dTok*adaR</code>.</li>
+      <li>Reserves update exactly; <strong>single</strong> LP mint triple:
+        <pre><code>flattenValue minted == [(ppLpCS, ppLpTN, lpMinted)]
+lpOf pp minted == lpMinted</code></pre>
+      </li>
+    </ul>
+
+    <p><strong>Swap dir amount minOut</strong></p>
+    <ul>
+      <li><code>dir=True</code> ADA→Token; <code>False</code> Token→ADA.</li>
+      <li>Apply <code>feeEff</code> then CPMM; enforce reserves update and <code>dy ≥ minOut</code>; <strong>no mint/burn</strong>.</li>
+    </ul>
+
+    <p><strong>RemoveLiquidity lpBurn minAdaOut minTokOut</strong></p>
+    <ul>
+      <li>Require exact LP burn triple:
+        <pre><code>flattenValue minted == [(ppLpCS, ppLpTN, negate lpBurn)]</code></pre>
+      </li>
+      <li>Compute deltas: <code>dAdaOut = adaR - adaR'</code>, <code>dTokOut = tokR - tokR'</code>; enforce <code>dAdaOut ≥ minAdaOut &amp;&amp; dTokOut ≥ minTokOut</code> and reserves not increasing.</li>
+    </ul>
+
+    <h3>6.4 LP Minting Policy (no external deps)</h3>
+    <pre><code>mkLpPolicy :: PoolParams -&gt; () -&gt; ScriptContext -&gt; Bool</code></pre>
+    <ul>
+      <li>Valid iff the transaction <strong>spends a pool input</strong> carrying the <strong>pool NFT</strong>.</li>
+      <li>Untyped wrapper with manual decoding:
+        <pre><code>wrappedMkLpPolicy :: PoolParams -&gt; BuiltinData -&gt; BuiltinData -&gt; ()
+wrappedMkLpPolicy pp d1 d2 =
+  let r   = unsafeFromBuiltinData @() d1
+      ctx = unsafeFromBuiltinData @ScriptContext d2
+  in if mkLpPolicy pp r ctx then () else traceError "mkLpPolicy failed"</code></pre>
+      </li>
+    </ul>
+
+    <h3>6.5 Integer Rounding &amp; Safety</h3>
+    <p>Mint path rounds <strong>down</strong>; swap uses safe integer division; burn path checks exact deltas and negative mint quantity.</p>
+  </section>
+
+  <section>
+    <h2>7. 🛡️ Security Requirements &amp; Threat Model</h2>
+    <h3>7.1 Identity &amp; State</h3>
+    <ul>
+      <li>Pool NFT binds state; verify token IDs <code>(CS,TN)</code> and ADA <code>(adaSymbol, adaToken)</code> precisely.</li>
+      <li>All state from <strong>datum</strong>; redeemer carries only action/minimums/params.</li>
+    </ul>
+
+    <h3>7.2 Mint/Burn Discipline</h3>
+    <p>Add → <strong>mint only</strong>; Remove → <strong>burn only</strong>; Swap → <strong>no mint/burn</strong>. Forbid other assets in <code>txInfoMint</code>.</p>
+
+    <h3>7.3 Value Accounting</h3>
+    <p>Enforce exact reserve transitions; allow only min-ADA dust; otherwise forbid foreign assets in the pool UTxO.</p>
+
+    <h3>7.4 Slippage &amp; MEV</h3>
+    <p><code>minOut</code> / <code>maxIn</code> required. Optional: batch auctions, time-bounded quotes, private mempools.</p>
+
+    <h3>7.5 Access Controls (optional)</h3>
+    <p>Governance key for fee switch/params; circuit breaker on abnormal deltas.</p>
+
+    <h3>7.6 Audits &amp; Testing</h3>
+    <ul>
+      <li>Property tests: fee makes <code>k</code> non-decreasing; no unintended mint; NFT continuity.</li>
+      <li>Fuzz rounding edges; mutation tests; static analysis; manual reviews.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>8. 🚀 Scaling to a Uniswap-Class Competitor</h2>
+    <ul>
+      <li><strong>Fee tiers</strong> (0.05%, 0.30%, 1.00%).</li>
+      <li><strong>Stableswap curves</strong> for correlated assets.</li>
+      <li><strong>Concentrated liquidity</strong> (range orders; positions as NFTs).</li>
+      <li><strong>Routing</strong>: multi-hop and split routes.</li>
+      <li><strong>Oracles &amp; Analytics</strong>: TWAP price feeds; dashboards for TVL, volume, fees, IL.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>9. 🧰 Operational Practices &amp; Tooling</h2>
+    <h3>9.1 Building</h3>
+    <pre><code>nix-shell
+cabal build</code></pre>
+
+    <h3>9.2 Exporting <code>.plutus</code> Scripts (already in <code>AMM.hs</code>)</h3>
+    <p><strong>Serializers</strong> for <code>Validator</code> and <code>MintingPolicy</code> produce <strong>cardano-cli text envelopes</strong>:</p>
+    <pre><code>writeValidatorEnvelope :: FilePath -&gt; Validator     -&gt; IO ()
+writePolicyEnvelope    :: FilePath -&gt; MintingPolicy -&gt; IO ()</code></pre>
+    <p><strong>Convenience entrypoint</strong>:</p>
+    <pre><code>exportPlutusScripts :: IO ()
+exportPlutusScripts = do
+  let poolValidator = poolValidatorScript params
+      lpPolicy      = lpMintingPolicy params
+  writeValidatorEnvelope "./assets/pool-validator.plutus" poolValidator
+  writePolicyEnvelope    "./assets/lp-policy.plutus"      lpPolicy</code></pre>
+    <p><strong>Outputs</strong>:</p>
+    <ul>
+      <li><code>./assets/pool-validator.plutus</code>  (pool validator)</li>
+      <li><code>./assets/lp-policy.plutus</code>       (LP mint/burn policy)</li>
+    </ul>
+
+    <h3>9.3 Example CLI Usage</h3>
+    <pre><code>cardano-cli transaction build \
+  --tx-in ... \
+  --tx-out ... \
+  --mint-script-file ./assets/lp-policy.plutus \
+  --out-file tx.raw</code></pre>
+    <p>(Adjust flags per network and script usage.)</p>
+
+    <h3>9.4 Emulator Seeds</h3>
+    <p>Demo IDs: <code>fakeCS1</code>, <code>fakeCS2</code>, <code>fakeCS3</code>; tokens: <code>tokenTN</code>, <code>lpTN</code>, <code>nftTN</code> and <code>params</code> with <code>Bps 100</code> (1%).</p>
+  </section>
+
+  <section>
+    <h2>10. 📚 Glossary of Terms</h2>
+    <ul>
+      <li><strong>AMM:</strong> Automated Market Maker</li>
+      <li><strong>CPMM:</strong> Constant-Product MM (\(x\cdot y = k\))</li>
+      <li><strong>LP:</strong> Liquidity Provider; also the token representing pool shares</li>
+      <li><strong>LP Tokens:</strong> Fungible representation of pool ownership</li>
+      <li><strong>TVL:</strong> Total Value Locked</li>
+      <li><strong>Slippage:</strong> Deviation between expected and actual execution price/output</li>
+      <li><strong>MinOut/MaxIn:</strong> Slippage-protection guardrails</li>
+      <li><strong>Pool NFT:</strong> Unique token tying pool UTxO identity across transitions</li>
+      <li><strong>Datum:</strong> On-chain data payload attached to a UTxO</li>
+      <li><strong>Reference Script:</strong> Script stored on-chain to be referenced by future txs</li>
+      <li><strong>TWAP:</strong> Time-Weighted Average Price</li>
+      <li><strong>CIP-68:</strong> Standard for NFTs with on-chain metadata/state</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>11. 📎 Appendix: Prior Q&amp;A (“You said…”)</h2>
+    <ul>
+      <li><em>What is LP? CPMM? TVL? AMM?</em> — See §2.</li>
+      <li><em>What is x · y = k?</em> — See §5.1.</li>
+      <li><em>What is slippage?</em> — See §2 and §5.4.</li>
+      <li><em>If x receives 10 how many LP tokens?</em> — See §5.2.</li>
+      <li><em>How does one decide on total LPs?</em> — Elastic supply &amp; policy in §5.3 and §6.5.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>12. 🧩 Reference Implementation (Compiling <code>AMM.hs</code>)</h2>
+    <p><strong>Module:</strong> <code>AMM</code></p>
+    <p><strong>Key exports:</strong></p>
+    <ul>
+      <li><code>poolValidatorScript :: PoolParams -&gt; Validator</code></li>
+      <li><code>lpMintingPolicy    :: PoolParams -&gt; MintingPolicy</code></li>
+      <li><code>exportPlutusScripts :: IO ()</code> — writes both <code>.plutus</code> text-envelopes</li>
+    </ul>
+    <p><strong>Params template:</strong></p>
+    <pre><code>params :: PoolParams
+params = PoolParams
+  { ppTokenCS   = "ff01"
+  , ppTokenTN   = "TOK"
+  , ppLpCS      = "ff02"
+  , ppLpTN      = "LP"
+  , ppPoolNftCS = "ff03"
+  , ppPoolNftTN = "POOLNFT"
+  , ppFeeBps    = Bps 100  -- 1%
+  }</code></pre>
+
+    <blockquote>
+      The source above compiles with <code>ghc-8.10.7</code> in your setup and ships a minimal, production-style AMM ready for emulator traces and CLI usage.
+    </blockquote>
+  </section>
+
+  <hr />
+  <footer class="meta">
+    <p>© Coxygen Global — MIT License</p>
+  </footer>
+</main>
+</body>
+</html>
