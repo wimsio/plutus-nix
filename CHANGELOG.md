@@ -1,12 +1,10 @@
 # Changelog
 
-## [1.2.4] - 2025-11-10
+## [1.2.5] - 2025-11-12
 
 ### 🚀 Overview
 
-This improves the plinth/plutus template by creating a flexible universal validator and testing it with a smart contract lock and unlock example.
-
-This is a plinth/plutus-tx-template designed to help plutus students and young developers get started developing Cardano Smart Contract quickly and easily.
+Added Constant Product Automated Market Maker (AMM) DEX — A Complete Tutorial (Cardano/Plutus) and AMM.hs validator. This is a move into DeFi.
 
 **Contributors:** Bernard Sibanda  
 
@@ -14,15 +12,13 @@ This is a plinth/plutus-tx-template designed to help plutus students and young d
 
 New files added : 
 
-- Universal.hs, 
-- UniversalTestLockUnlock.hs, 
-- Universal.html, 
-- UniversalTestLockUnlock.html,
-- Universal.md, 
-- UniversalTestLockUnlock.md
-
+AMM.hs
+amm.md
+amm.html
 
 ### 👥 Contributors
+
+
 
 - **Bernard Sibanda** 
 
