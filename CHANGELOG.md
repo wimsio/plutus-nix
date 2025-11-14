@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.5] - 2025-11-12
+## [1.2.6] - 2025-11-12
 
 ### 🚀 Overview
 
@@ -17,8 +17,6 @@ amm.md
 amm.html
 
 ### 👥 Contributors
-
-
 
 - **Bernard Sibanda** 
 

@@ -1,0 +1,153 @@
+    <!-- Full HTML factory app: provides input UI and generates Haskell code -->
+    <!doctype html>
+    <html lang="en"> 
+    <head>
+      <meta charset="utf-8" />
+      <title>Universal Smart Contract Generator</title>
+      <script defer src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+      <style>
+        body { font-family: system-ui, sans-serif; background: #0b1020; color: #e8ecff; margin: 0; padding: 2rem; }
+        .container { max-width: 900px; margin: auto; }
+        .card { background: #151a2c; border-radius: 1rem; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid #252d4d; }
+        label { display: block; margin: 0.5rem 0 0.2rem; font-weight: bold; color: #96a0c9; }
+        input, textarea, select { width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; background: #0e1428; border: 1px solid #242b46; color: white; border-radius: 0.5rem; }
+        .btn { background: #7aa2ff; border: none; padding: 0.6rem 1.2rem; font-weight: bold; border-radius: 0.5rem; cursor: pointer; color: black; margin-top: 1rem; }
+        .btn.secondary { background: #252d4d; color: #e8ecff; margin-left: 1rem; }
+        .field-group { margin-bottom: 1rem; }
+        .dynamic-group { margin-bottom: 1rem; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Universal Smart Contract Generator</h1>
+        <div class="card">
+          <label>Smart Contract Title</label>
+          <input type="text" id="sc-title" placeholder="e.g., LockByDeadline" />
+
+          <label>Description</label>
+          <textarea id="sc-description" placeholder="Short summary of the contract behavior"></textarea>
+
+          <label>Rules (one per line, Haskell syntax)</label>
+          <textarea id="sc-rules" placeholder="e.g.,
+RequireAnySigner [pkhFromHexUnsafe \"...\"]
+ValidAfter 1760000000000"></textarea>
+        </div>
+
+        <div class="card">
+          <h3>Datum Fields</h3>
+          <div id="datum-fields"></div>
+          <button class="btn secondary" onclick="addField('datum')">+ Add Datum Field</button>
+        </div>
+
+        <div class="card">
+          <h3>Redeemer Fields</h3>
+          <div id="redeemer-fields"></div>
+          <button class="btn secondary" onclick="addField('redeemer')">+ Add Redeemer Field</button>
+        </div>
+
+        <div>
+          <button class="btn" onclick="downloadFiles()">Download Haskell Files</button>
+        </div>
+      </div>
+
+      <script type="text/javascript">
+        function addField(type) {
+          const container = document.getElementById(`${type}-fields`);
+          const div = document.createElement('div');
+          div.className = 'dynamic-group';
+          div.innerHTML = \`
+            <div class="field-group">
+              <input type="text" placeholder="Field name (e.g., beneficiary)" class="field-name" />
+              <select class="field-type">
+                <option>Integer</option>
+                <option>POSIXTime</option>
+                <option>PubKeyHash</option>
+                <option>ByteString</option>
+              </select>
+            </div>\`;
+          container.appendChild(div);
+        }
+
+        function generateTypeDef(name, fields) {
+          const cons = fields.map(f => \`\${f.name} :: \${f.type}\`).join(', ');
+          return \`data \${name} = \${name} { \${cons} }
+    PlutusTx.makeIsDataIndexed ''\${name} [(''\${name}, 0)]
+    PlutusTx.makeLift ''\${name}
+\`;
+        }
+
+        function downloadFiles() {
+          const title = document.getElementById('sc-title').value.trim();
+          const desc = document.getElementById('sc-description').value.trim();
+          const rules = document.getElementById('sc-rules').value.trim().split('\n').filter(r => r.length > 0);
+
+          function getFields(type) {
+            return Array.from(document.querySelectorAll(`#\${type}-fields .dynamic-group`)).map(div => {
+              const name = div.querySelector('.field-name').value.trim();
+              const typeVal = div.querySelector('.field-type').value;
+              return name ? { name, type: typeVal } : null;
+            }).filter(x => x);
+          }
+
+          const datum = getFields('datum');
+          const redeemer = getFields('redeemer');
+
+          const datumDecl = generateTypeDef(`${title}Datum`, datum);
+          const redeemerDecl = generateTypeDef(`${title}Redeemer`, redeemer);
+          const ruleList = rules.map(r => '    ' + r).join(',\n');
+
+          const code = \`{-# LANGUAGE DataKinds #-}
+    {-# LANGUAGE NoImplicitPrelude #-}
+    {-# LANGUAGE OverloadedStrings #-}
+    {-# LANGUAGE TemplateHaskell #-}
+
+    module \${title}Validator where
+
+    import Plutus.V2.Ledger.Api
+    import PlutusTx
+    import PlutusTx.Prelude
+    import Prelude (IO, String, ($))
+    import qualified Prelude as P
+    import qualified Data.ByteString.Char8 as C
+    import qualified Data.ByteString.Base16 as B16
+    import qualified Codec.Serialise as Serialise
+    import qualified Data.ByteString.Lazy as LBS
+    import Universal
+
+    \${datumDecl}
+    \${redeemerDecl}
+
+    pkhFromHexUnsafe :: String -> PubKeyHash
+    pkhFromHexUnsafe hex =
+      case B16.decode (C.pack hex) of
+        Right raw -> PubKeyHash (toBuiltin raw)
+        Left _ -> traceError "invalid hex"
+
+    mkParams :: Params
+    mkParams = Params
+      { sSpec = SpendingSpec
+          [\${ruleList}
+          ]
+      , mSpec = MintingSpec []
+      , extra = []
+      }
+
+    mkValidator :: Validator
+    mkValidator = mkSpendingValidator mkParams
+
+    writePlutus :: IO ()
+    writePlutus = do
+      let bs = Serialise.serialise (unValidatorScript mkValidator)
+          json = "{\\\"type\\\": \\\"PlutusScriptV2\\\", \\\"description\\\": \\\"\${desc}\\\", \\\"cborHex\\\": \\\"" ++ C.unpack (B16.encode (LBS.toStrict bs)) ++ "\\\"}"
+      LBS.writeFile "assets/\${title}.plutus" (LBS.fromStrict (C.pack json))
+    \`;
+
+          const blob = new Blob([code], {type: 'text/plain'});
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = \`\${title}Validator.hs\`;
+          a.click();
+        }
+      </script>
+    </body>
+    </html>
