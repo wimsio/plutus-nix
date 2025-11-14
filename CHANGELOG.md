@@ -1,20 +1,16 @@
 # Changelog
 
-## [1.2.6] - 2025-11-12
+## [1.2.7] - 2025-11-14
 
 ### 🚀 Overview
 
-Added Constant Product Automated Market Maker (AMM) DEX — A Complete Tutorial (Cardano/Plutus) and AMM.hs validator. This is a move into DeFi.
+Created a starter-kit which helps quickens development.
 
 **Contributors:** Bernard Sibanda  
 
 ### ✨ Added
 
-New files added : 
-
-AMM.hs
-amm.md
-amm.html
+Added a small project `plutus-starter-kit`.
 
 ### 👥 Contributors
 

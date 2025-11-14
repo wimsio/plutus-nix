@@ -1,0 +1,72 @@
+cabal-version:      3.4
+name:               Template
+version:            0.1.0.0
+author:             IOG's education team, Bernard Sibanda
+maintainer:         education@iohk.io, cto@wims.io
+license:            Apache-2.0
+build-type:         Simple
+
+common common-all
+    build-depends:
+        base ^>=4.14.3.0,
+        aeson,
+        bytestring,
+        containers,
+        cardano-api,
+        data-default,
+        plutus-ledger-api,
+        cardano-ledger-core,
+        plutus-tx-plugin,
+        plutus-tx,
+        base16-bytestring,
+        text,
+        serialise,
+        cardano-ledger-shelley,
+        bech32 >=1.1 && <2.0,
+        time
+    default-language: Haskell2010
+    ghc-options:
+        -Wno-unused-packages
+        -fobject-code
+        -fno-ignore-interface-pragmas
+        -fno-omit-interface-pragmas
+        -fno-strictness
+        -fno-spec-constr
+        -fno-specialise
+        -fexpose-all-unfoldings
+        -fplugin-opt PlutusTx.Plugin:defer-errors
+
+common common-all-tests
+    import:           common-all
+    build-depends:
+      QuickCheck,
+      tasty,
+      tasty-hunit,
+      bytestring,
+      base16-bytestring,
+      plutus-simple-model,
+      plutus-ledger-api
+    default-language: Haskell2010
+
+library 
+    import:            common-all
+    hs-source-dirs:    app, . 
+    exposed-modules:
+      ValidatorLogic
+      Utilities
+    build-depends:
+      base >=4.14 && <5,      
+      time,
+      bytestring
+    default-language: Haskell2010
+
+executable template-exe
+  import:            common-all
+  hs-source-dirs:    app, . 
+  main-is:           Main.hs
+  build-depends:
+      base >=4.14 && <5
+  other-modules: 
+      ValidatorLogic,
+      Utilities
+  default-language:  Haskell2010

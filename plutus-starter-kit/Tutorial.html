@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Coxy Plutus Playground – User Tutorial</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Optional: simple styling to make it readable -->
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 1.5rem;
+      background: #f5f5f5;
+      color: #111827;
+      line-height: 1.6;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 1.75rem 1.5rem 2.5rem;
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      margin-top: 2rem;
+      margin-bottom: 0.75rem;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 0.25rem;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      margin-top: 1.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      margin: 0.5rem 0 0.75rem;
+    }
+
+    ul {
+      padding-left: 1.3rem;
+      margin: 0.25rem 0 0.75rem;
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: #f3f4f6;
+      padding: 0.1rem 0.3rem;
+      border-radius: 0.25rem;
+      font-size: 0.9em;
+    }
+
+    pre {
+      background: #111827;
+      color: #e5e7eb;
+      padding: 0.9rem 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      font-size: 0.9em;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    .toc {
+      background: #f9fafb;
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 1.5rem;
+    }
+
+    .toc ol {
+      margin: 0.25rem 0;
+      padding-left: 1.3rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.9rem;
+      padding: 0.1rem 0.55rem;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    .glossary-term {
+      margin-top: 1rem;
+    }
+
+    .glossary-term strong {
+      font-size: 1.02rem;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 1.75rem 0;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>⚙️ Coxy Plutus Playground – User Tutorial</h1>
+    <p>
+      This tutorial explains how to use <strong>Coxy Plutus Playground</strong> to design Plutus smart contracts,
+      generate JSON specs, and scaffold a complete Haskell validator module.
+    </p>
+  </header>
+
+  <!-- Table of Contents -->
+  <section class="toc">
+    <h2>📑 Table of Contents</h2>
+    <ol>
+      <li>📘 What Is Coxy Plutus Playground?</li>
+      <li>🚀 Getting Started: First Look at the UI</li>
+      <li>🏭 Using Prebuilt Industries (Template Mode)</li>
+      <li>🧩 Designing Your Own Contract (Custom Industry Mode)</li>
+      <li>📦 Datum Options Panel (State &amp; Parameters)</li>
+      <li>🎯 Redeemer Options Panel (Actions &amp; Constraints)</li>
+      <li>🛠 Generating JSON Specs &amp; Haskell Code</li>
+      <li>📥 Downloading &amp; Using <code>ValidatorLogic.hs</code></li>
+      <li>🧪 Example Walkthrough: Simple Escrow Contract</li>
+      <li>💡 Tips, Patterns, and Common Gotchas</li>
+      <li>📚 Glossary of Terms (Detailed)</li>
+    </ol>
+  </section>
+
+  <!-- 1 -->
+  <section id="section-1">
+    <h2>1. 📘 What Is Coxy Plutus Playground?</h2>
+    <p>
+      <span class="badge">Concept</span>
+    </p>
+    <p>
+      Coxy Plutus Playground is a <strong>UI helper</strong> for designing Plutus smart contracts without starting from a blank Haskell file.
+      Instead of hand-writing every type and constraint, you configure your contract visually and let the tool generate:
+    </p>
+    <ul>
+      <li>An <strong>Industry / Contract Template</strong> (DEX, escrow, lending, auctions, etc.) or a fully <strong>custom contract</strong>.</li>
+      <li><strong>Datum fields</strong> (on-chain state &amp; parameters).</li>
+      <li><strong>Redeemer actions</strong> (what users can do: <code>Deposit</code>, <code>Withdraw</code>, <code>Cancel</code>, etc.).</li>
+      <li><strong>Constraints</strong> attached to those actions (e.g. “must be signed by buyer”, “before deadline”, “script owns NFT”).</li>
+    </ul>
+    <p>From these inputs, the Playground automatically generates:</p>
+    <ul>
+      <li><strong>Datum JSON spec</strong></li>
+      <li><strong>Redeemer JSON spec</strong></li>
+      <li>A <strong>Haskell <code>mkValidator</code> preview</strong></li>
+      <li>A complete <strong>Haskell module</strong> (<code>ValidatorLogic.hs</code>) you can download</li>
+    </ul>
+    <p><em>Think of it as a contract builder that outputs ready-to-edit Plutus code and specs.</em></p>
+  </section>
+
+  <!-- 2 -->
+  <section id="section-2">
+    <h2>2. 🚀 Getting Started: First Look at the UI</h2>
+    <p>
+      <span class="badge">Layout</span>
+    </p>
+    <p>When you open the Coxy Plutus Playground HTML page, you’ll see a <strong>two-column layout</strong>.</p>
+
+    <h3>2.1 Left Side – Configuration</h3>
+    <ul>
+      <li><strong>Industry selector</strong> (<code>&lt;select id="industry"&gt;</code>)</li>
+      <li>Optional <strong>“Custom Industry / Custom Contract”</strong> section (for fully custom designs)</li>
+      <li><strong>Datum options</strong> panel</li>
+      <li><strong>Redeemer options</strong> panel</li>
+      <li>Advanced <strong>custom datum &amp; redeemer</strong> toggles</li>
+      <li><strong>Generate Logic Spec</strong> button</li>
+    </ul>
+
+    <h3>2.2 Right Side – Outputs</h3>
+    <p>The right column contains four stacked text areas:</p>
+    <ol>
+      <li><strong>Datum JSON</strong> – describes your chosen datum structure.</li>
+      <li><strong>Redeemer JSON</strong> – actions + constraints.</li>
+      <li><strong>Haskell mkValidator (preview)</strong> – core validator logic skeleton.</li>
+      <li><strong>Full Haskell Plutus module</strong> – a compilable <code>ValidatorLogic.hs</code> template, with a button to download.</li>
+    </ol>
+  </section>
+
+  <!-- 3 -->
+  <section id="section-3">
+    <h2>3. 🏭 Using Prebuilt Industries (Template Mode)</h2>
+    <p>
+      <span class="badge">Templates</span>
+    </p>
+    <p>
+      Template mode is the default when <strong>“Custom Industry” is OFF</strong>. In this mode, you re-use curated contract profiles (industries).
+    </p>
+
+    <h3>3.1 Choose an Industry</h3>
+    <ol>
+      <li>At the top left, open the <strong>Industry</strong> dropdown.</li>
+      <li>Select a template, e.g. a DEX, escrow, lending, or auction profile.</li>
+      <li>On change:
+        <ul>
+          <li>The <strong>Datum options</strong> panel updates with fields relevant to that contract.</li>
+          <li>The <strong>Redeemer options</strong> panel updates with actions and built-in constraints.</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>3.2 Datum Options from Template</h3>
+    <p>In the <strong>Datum options</strong> subpanel you’ll see checkboxes like:</p>
+    <ul>
+      <li><code>☑ seller :: PubKeyHash</code></li>
+      <li><code>☐ buyer :: PubKeyHash</code></li>
+      <li><code>☑ price :: Integer</code></li>
+    </ul>
+    <p>
+      Tick the fields you want your contract to use. These become the record fields of the datum type
+      (default name <code>CoxyDatum</code>, or an industry-specific datum type name).
+    </p>
+
+    <h3>3.3 Redeemer Actions &amp; Constraints from Template</h3>
+    <p>In the <strong>Redeemer options</strong> panel:</p>
+    <ul>
+      <li>Each <strong>action</strong> (e.g. <code>PaySeller</code>, <code>Cancel</code>, <code>Bid</code>, <code>Close</code>) appears as a block.</li>
+      <li>Under each action you’ll see checkboxes for <strong>constraints</strong>:
+        <ul>
+          <li><code>☑ signedBySeller</code></li>
+          <li><code>☐ beforeDeadline</code></li>
+          <li><code>☑ scriptHasNFT</code></li>
+        </ul>
+      </li>
+    </ul>
+    <p>
+      When you tick constraints for an action, they are written into Redeemer JSON and used to generate
+      Haskell calls such as:
+    </p>
+    <pre><code>traceIfFalse "signedBySeller" (constraint_signedBySeller dat ctx)</code></pre>
+  </section>
+
+  <!-- 4 -->
+  <section id="section-4">
+    <h2>4. 🧩 Designing Your Own Contract (Custom Industry Mode)</h2>
+    <p>
+      <span class="badge">Custom Mode</span>
+    </p>
+    <p>
+      Custom industry mode lets you define the entire contract “shape” yourself: type names, datum fields, actions, and constraints.
+    </p>
+
+    <h3>4.1 Enable Custom Industry Mode</h3>
+    <p>On the left, locate the checkbox/toggle like:</p>
+    <p><strong>“Enable custom industry / contract”</strong></p>
+    <ul>
+      <li>When checked, the <strong>Industry dropdown is disabled</strong> (so you don’t mix modes).</li>
+      <li>A <strong>Custom Industry / Contract</strong> section appears.</li>
+      <li>Template-derived fields no longer drive your specs; the custom UI does.</li>
+    </ul>
+
+    <h3>4.2 Custom Contract Metadata</h3>
+    <p>In the custom section, fill in:</p>
+    <ul>
+      <li><strong>Contract Title</strong> – e.g. <code>Escrow with Milestones</code></li>
+      <li><strong>Custom Industry ID</strong> – e.g. <code>escrowMilestone</code> (no spaces)</li>
+      <li><strong>Datum Type Name</strong> – e.g. <code>EscrowDatum</code></li>
+      <li><strong>Redeemer Type Name</strong> – e.g. <code>EscrowRedeemer</code></li>
+    </ul>
+    <p>
+      These names are used in the generated Haskell module and strongly influence readability of your contract.
+    </p>
+
+    <h3>4.3 Add Custom Datum Fields</h3>
+    <p>In the <strong>Custom Datum Fields</strong> area:</p>
+    <ol>
+      <li>Click the button to <strong>add a datum field</strong>.</li>
+      <li>For each row, fill:
+        <ul>
+          <li><strong>Field name</strong> – e.g. <code>seller</code>, <code>buyer</code>, <code>deadline</code>, <code>price</code></li>
+          <li><strong>Plutus type</strong> – chosen from a dropdown:
+            <ul>
+              <li><code>Integer</code></li>
+              <li><code>PubKeyHash</code></li>
+              <li><code>POSIXTime</code></li>
+              <li><code>CurrencySymbol</code></li>
+              <li><code>TokenName</code></li>
+              <li><code>BuiltinByteString</code></li>
+              <li><code>Bool</code></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+    </ol>
+    <p>Example: <code>seller :: PubKeyHash</code> becomes in Haskell:</p>
+    <pre><code>data EscrowDatum = EscrowDatum
+    { cdSeller :: PubKeyHash
+    , ...
+    }</code></pre>
+    <p>The generator automatically prefixes fields with <code>cd</code> for the datum record.</p>
+
+    <h3>4.4 Add Custom Redeemer Actions + Constraints</h3>
+    <p>In the <strong>Custom Redeemer Actions</strong> section:</p>
+    <ol>
+      <li>Click <strong>“Add action”</strong> to create a row.</li>
+      <li>For each action:
+        <ul>
+          <li><strong>Action Name</strong> – e.g. <code>PaySeller</code>, <code>Cancel</code>, <code>ClaimRefund</code></li>
+          <li><strong>Label / Description</strong> – human-readable description for JSON/UI.</li>
+          <li><strong>Constraints</strong> – a comma-separated list of constraint IDs, e.g.
+            <code>scriptHasNFT,signedByBuyer,beforeDeadline</code>
+          </li>
+        </ul>
+      </li>
+    </ol>
+    <p>Each constraint ID:</p>
+    <ul>
+      <li>Is stored in JSON under the action’s <code>constraints</code> array.</li>
+      <li>Generates a <code>traceIfFalse</code> line in the Haskell <code>mkValidator</code> branch for that action.</li>
+      <li>Gets a <strong>stub Haskell function</strong>:
+        <pre><code>constraint_scriptHasNFT :: EscrowDatum -> ScriptContext -> Bool
+constraint_scriptHasNFT _ _ = True</code></pre>
+      </li>
+    </ul>
+  </section>
+
+  <!-- 5 -->
+  <section id="section-5">
+    <h2>5. 📦 Datum Options Panel (State &amp; Parameters)</h2>
+    <p>
+      <span class="badge">State</span>
+    </p>
+    <p>
+      The Datum panel defines <strong>what the contract knows</strong> at validation time:
+      seller, buyer, prices, deadlines, tokens, etc.
+    </p>
+
+    <h3>5.1 Template Mode</h3>
+    <p>
+      In template mode, the panel shows checkboxes for pre-defined fields. Tick those that you want
+      in your datum record; leave others unchecked.
+    </p>
+
+    <h3>5.2 Custom Mode</h3>
+    <p>
+      In custom mode, the template checkboxes are not used. All fields are taken from the
+      <strong>Custom Datum Fields</strong> section you configured.
+    </p>
+
+    <h3>5.3 Advanced Custom Datum Fields</h3>
+    <p>
+      There is also an <strong>“Enable custom datum fields (advanced)”</strong> toggle (separate from custom industry).
+      When enabled:
+    </p>
+    <ul>
+      <li>You can add free-form <strong>field name</strong> and <strong>Haskell type</strong> inputs.</li>
+      <li>These go into <code>customFields</code> in the Datum JSON.</li>
+      <li>They also appear as extra fields in the Haskell record, using the exact type you type in.</li>
+    </ul>
+    <p>
+      This is ideal for more complex or experimental types not exposed in the main dropdown,
+      e.g. <code>Maybe POSIXTime</code> or custom sum types.
+    </p>
+  </section>
+
+  <!-- 6 -->
+  <section id="section-6">
+    <h2>6. 🎯 Redeemer Options Panel (Actions &amp; Constraints)</h2>
+    <p>
+      <span class="badge">Behaviour</span>
+    </p>
+    <p>
+      The Redeemer panel defines <strong>what users can do</strong> with the contract
+      and which conditions must hold for each action.
+    </p>
+
+    <h3>6.1 Actions</h3>
+    <p>
+      Each action you define (template or custom) becomes a constructor of the redeemer type. For example:
+    </p>
+    <pre><code>data EscrowRedeemer = PaySeller | RefundBuyer</code></pre>
+    <p>And in <code>mkValidator</code>:</p>
+    <pre><code>mkValidator dat red ctx =
+  case red of
+    PaySeller   -> ...
+    RefundBuyer -> ...</code></pre>
+
+    <h3>6.2 Constraints in Template Mode</h3>
+    <p>
+      For built-in industries, each action shows a list of standard constraints as checkboxes:
+      <code>signedBySeller</code>, <code>signedByBuyer</code>, <code>beforeDeadline</code>, etc.
+    </p>
+    <p>
+      Ticking them adds them to the action’s constraint list and generates lines like:
+    </p>
+    <pre><code>traceIfFalse "signedBySeller" (constraint_signedBySeller dat ctx)</code></pre>
+
+    <h3>6.3 Constraints in Custom Mode</h3>
+    <p>
+      In custom mode, you type constraint IDs manually into a comma-separated field for each action:
+      e.g. <code>scriptHasNFT,signedByBuyer,beforeDeadline</code>.
+    </p>
+    <p>The generator will:</p>
+    <ul>
+      <li>Split on commas and trim whitespace.</li>
+      <li>Ignore empty pieces.</li>
+      <li>Create an entry in the JSON constraints array for each ID.</li>
+      <li>Create <code>traceIfFalse</code> calls and stub functions in Haskell.</li>
+    </ul>
+  </section>
+
+  <!-- 7 -->
+  <section id="section-7">
+    <h2>7. 🛠 Generating JSON Specs &amp; Haskell Code</h2>
+    <p>
+      <span class="badge">Generation</span>
+    </p>
+    <p>After configuring datum and redeemer options, click the <strong>Generate Logic Spec</strong> button.</p>
+
+    <h3>7.1 What Happens Internally</h3>
+    <ol>
+      <li>The script decides which <strong>industry definition</strong> to use:
+        <ul>
+          <li>Template mode: selected industry from dropdown.</li>
+          <li>Custom mode: structure from <code>getCustomIndustryFromUI()</code>.</li>
+        </ul>
+      </li>
+      <li>It builds:
+        <ul>
+          <li><code>datumSpec = buildDatumSpec(industry)</code></li>
+          <li><code>redeemerSpec = buildRedeemerSpec(industry)</code></li>
+        </ul>
+      </li>
+      <li>It writes them into the right-hand textareas:
+        <ul>
+          <li><strong>Datum JSON</strong> – <code>datum-json-output</code></li>
+          <li><strong>Redeemer JSON</strong> – <code>redeemer-json-output</code></li>
+        </ul>
+      </li>
+      <li>It generates:
+        <ul>
+          <li><strong>Haskell mkValidator preview</strong> via <code>mkHaskellPreview</code></li>
+          <li><strong>Full module</strong> via <code>mkFullHaskellModule</code></li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>7.2 Example Datum JSON</h3>
+    <pre><code>{
+  "datumType": "EscrowDatum",
+  "fields": [
+    { "id": "seller", "type":
