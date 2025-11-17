@@ -151,6 +151,40 @@ executable lending-vault-exe
         cardano-ledger-shelley
     default-language:   Haskell2010
 
+executable liquidation-auction-exe
+    main-is:            Liquidation-Auction.hs
+    hs-source-dirs:     tests
+    build-depends:
+        base >=4.14 && <5,
+        plutus-ledger-api,
+        plutus-tx,
+        plutus-tx-plugin,
+        bytestring,
+        serialise,
+        text,
+        containers,
+        cardano-api,
+        cardano-ledger-core,
+        cardano-ledger-shelley
+    default-language:   Haskell2010
+
+executable collaterized-stablecoin-exe
+    main-is:            Collaterized-Stablecoin.hs
+    hs-source-dirs:     tests
+    build-depends:
+        base >=4.14 && <5,
+        plutus-ledger-api,
+        plutus-tx,
+        plutus-tx-plugin,
+        bytestring,
+        serialise,
+        text,
+        containers,
+        cardano-api,
+        cardano-ledger-core,
+        cardano-ledger-shelley
+    default-language:   Haskell2010
+
 executable ip-exe
     main-is:            Ip.hs
     hs-source-dirs:     tests
