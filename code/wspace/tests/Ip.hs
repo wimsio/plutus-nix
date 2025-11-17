@@ -11,6 +11,7 @@
 module Main where
 
 import PlutusTx
+import Plutus.V1.Ledger.Value (valueOf)
 import PlutusTx.Prelude hiding (Semigroup(..), unless)
 import Plutus.V2.Ledger.Api
 import Plutus.V2.Ledger.Contexts
@@ -22,7 +23,7 @@ import qualified Prelude as H
 import GHC.Generics (Generic)
 
 --------------------------------------------------------------------------------
--- IP Datum and Redeemer
+-- IP Datum and Redeemer with optional NFT
 --------------------------------------------------------------------------------
 
 data IPDatum = IPDatum
@@ -30,10 +31,11 @@ data IPDatum = IPDatum
     , ipTitle     :: BuiltinByteString
     , ipContentId :: BuiltinByteString  -- hash of the intellectual property
     , ipLicensed  :: Bool
+    , ipCurrency  :: CurrencySymbol     -- NFT currency symbol
+    , ipToken     :: TokenName          -- NFT token name
     }
     deriving (H.Show, Generic)
 
--- Only need IsData for Datum usage
 PlutusTx.unstableMakeIsData ''IPDatum
 
 data IPRedeemer
@@ -44,7 +46,7 @@ data IPRedeemer
 PlutusTx.unstableMakeIsData ''IPRedeemer
 
 --------------------------------------------------------------------------------
--- Validation Logic
+-- Validator Logic
 --------------------------------------------------------------------------------
 
 {-# INLINABLE mkIPValidator #-}
@@ -57,18 +59,24 @@ mkIPValidator datum red ctx =
 {-# INLINABLE validateRegister #-}
 validateRegister :: IPDatum -> ScriptContext -> Bool
 validateRegister dat ctx =
-    traceIfFalse "registration not signed by owner" signedByOwner
+    traceIfFalse "registration not signed by owner" signedByOwner &&
+    traceIfFalse "NFT not present" nftPresent
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
+
     signedByOwner :: Bool
     signedByOwner = txSignedBy info (ipOwner dat)
+
+    nftPresent :: Bool
+    nftPresent = valueOf (mconcat $ map txOutValue $ txInfoOutputs info) (ipCurrency dat) (ipToken dat) >= 1
 
 {-# INLINABLE validateTransfer #-}
 validateTransfer :: IPDatum -> PubKeyHash -> ScriptContext -> Bool
 validateTransfer dat newOwner ctx =
     traceIfFalse "transfer not signed by current owner" signedByOldOwner &&
-    traceIfFalse "no continuing output with new owner" hasValidContinuing
+    traceIfFalse "no continuing output with new owner" hasValidContinuing &&
+    traceIfFalse "NFT missing in continuing output" nftPresent
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
@@ -85,7 +93,7 @@ validateTransfer dat newOwner ctx =
             [o] -> case txOutDatum o of
                 OutputDatum (Datum d) ->
                     case PlutusTx.fromBuiltinData d of
-                        Just (IPDatum newOwner' title' content' licensed') ->
+                        Just (IPDatum newOwner' title' content' licensed' _ _) ->
                             newOwner' == newOwner &&
                             title' == ipTitle dat &&
                             content' == ipContentId dat &&
@@ -93,6 +101,12 @@ validateTransfer dat newOwner ctx =
                         _ -> False
                 _ -> False
             _ -> False
+
+    nftPresent :: Bool
+    nftPresent =
+        case continuing of
+            [o] -> valueOf (txOutValue o) (ipCurrency dat) (ipToken dat) >= 1
+            _   -> False
 
 --------------------------------------------------------------------------------
 -- Compile and Wrap
@@ -122,7 +136,6 @@ writeValidator file val = do
 
 main :: IO ()
 main = do
-    let file = "ip-smartcontract.plutus"
+    let file = "ip-smartcontract-nft.plutus"
     writeValidator file validator
-    H.putStrLn "IP Smart Contract (no makeLift, modern PlutusTx) built successfully!"
-
+    H.putStrLn "IP Smart Contract with NFT support built successfully!"
