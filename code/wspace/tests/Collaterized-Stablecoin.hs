@@ -16,7 +16,7 @@ import Plutus.V2.Ledger.Api
 import Plutus.V2.Ledger.Contexts
 import qualified Plutus.V2.Ledger.Api as PlutusV2
 import Plutus.V1.Ledger.Interval as Interval hiding (singleton)
-import Plutus.V1.Ledger.Value (valueOf, adaSymbol, adaToken)
+import Plutus.V1.Ledger.Value (valueOf, adaSymbol, adaToken, geq)
 import PlutusTx
 import PlutusTx.Prelude hiding (Semigroup(..), unless)
 import qualified PlutusTx.Builtins as Builtins
