@@ -24,6 +24,7 @@ import qualified PlutusTx.AssocMap as Map
 import qualified Codec.Serialise as Serialise
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 
 -- Cardano API
 import qualified Cardano.Api as C
@@ -158,26 +159,37 @@ policy = mkMintingPolicyScript $$(PlutusTx.compile [|| mkPolicyUntyped ||])
 -- Currency Symbol (V2 does NOT export scriptCurrencySymbol)
 --------------------------------------------------------------------------------
 
-{-# INLINABLE scriptCurrencySymbol #-}
-scriptCurrencySymbol :: MintingPolicy -> CurrencySymbol
-scriptCurrencySymbol mp =
-    let mph = scriptCurrencySymbol mp
-    in case mph of MintingPolicyHash h -> CurrencySymbol h
-
+{-# INLINABLE currencySymbol #-}
 currencySymbol :: CurrencySymbol
-currencySymbol = PlutusV2.scriptCurrencySymbol policy
+currencySymbol =
+    let
+        bytes :: BS.ByteString
+        bytes = LBS.toStrict $ Serialise.serialise policy  -- strict ByteString
+
+        builtin :: BuiltinByteString
+        builtin = Builtins.toBuiltin bytes
+
+        hash :: BuiltinByteString
+        hash = sha2_256 builtin
+    in CurrencySymbol hash
 
 
 --------------------------------------------------------------------------------
 -- Hash + Bech32 Address
 --------------------------------------------------------------------------------
 
-plutusValidatorHash :: PlutusV2.MintingPolicy -> PlutusV2.ScriptHash
+{-# INLINABLE plutusValidatorHash #-}
+plutusValidatorHash :: MintingPolicy -> PlutusV2.ScriptHash
 plutusValidatorHash pol =
-    let bytes = Serialise.serialise pol
-        short = SBS.toShort (LBS.toStrict bytes)
-        builtin = Builtins.toBuiltin short
-    in PlutusV2.ScriptHash builtin
+    let
+        bytes :: BS.ByteString
+        bytes = LBS.toStrict $ Serialise.serialise pol  -- serialize -> strict ByteString
+
+        builtin :: BuiltinByteString
+        builtin = Builtins.toBuiltin bytes             -- convert to BuiltinByteString
+
+    in PlutusV2.ScriptHash (sha2_256 builtin)         -- hash it
+
 
 
 toBech32PolicyAddress :: C.NetworkId -> MintingPolicy -> String
