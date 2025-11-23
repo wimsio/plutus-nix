@@ -52,44 +52,33 @@ mkValidator dat red ctx =
       traceIfFalse "signedByBuyer" (constraint_signedByBuyer dat ctx)
       && traceIfFalse "signedBySeller" (constraint_signedBySeller dat ctx)
       && traceIfFalse "beforeDeadline" (constraint_beforeDeadline dat ctx)
-      && traceIfFalse "afterDeadline" (constraint_afterDeadline dat ctx)
       && traceIfFalse "sellerPaid" (constraint_sellerPaid dat ctx)
-      && traceIfFalse "buyerRefunded" (constraint_buyerRefunded dat ctx)
       && traceIfFalse "scriptHasNFT" (constraint_scriptHasNFT dat ctx)
     RefundBuyer ->
-      traceIfFalse "signedByBuyer" (constraint_signedByBuyer dat ctx)
-      && traceIfFalse "signedBySeller" (constraint_signedBySeller dat ctx)
-      && traceIfFalse "beforeDeadline" (constraint_beforeDeadline dat ctx)
+      traceIfFalse "signedBySeller" (constraint_signedBySeller dat ctx)
       && traceIfFalse "afterDeadline" (constraint_afterDeadline dat ctx)
-      && traceIfFalse "sellerPaid" (constraint_sellerPaid dat ctx)
       && traceIfFalse "buyerRefunded" (constraint_buyerRefunded dat ctx)
       && traceIfFalse "scriptHasNFT" (constraint_scriptHasNFT dat ctx)
   where
     constraint_signedByBuyer :: CoxyDatum -> ScriptContext -> Bool
     constraint_signedByBuyer _ _ = True
 
-
     constraint_signedBySeller :: CoxyDatum -> ScriptContext -> Bool
     constraint_signedBySeller _ _ = True
-
 
     constraint_beforeDeadline :: CoxyDatum -> ScriptContext -> Bool
     constraint_beforeDeadline _ _ = True
 
-
-    constraint_afterDeadline :: CoxyDatum -> ScriptContext -> Bool
-    constraint_afterDeadline (CoxyDatum cd) _ = cd.cdAmount > o
-
-
     constraint_sellerPaid :: CoxyDatum -> ScriptContext -> Bool
     constraint_sellerPaid _ _ = True
 
+    constraint_scriptHasNFT :: CoxyDatum -> ScriptContext -> Bool
+    constraint_scriptHasNFT _ _ = True
+
+    constraint_afterDeadline :: CoxyDatum -> ScriptContext -> Bool
+    constraint_afterDeadline _ _ = True
 
     constraint_buyerRefunded :: CoxyDatum -> ScriptContext -> Bool
     constraint_buyerRefunded _ _ = True
-
-
-    constraint_scriptHasNFT :: CoxyDatum -> ScriptContext -> Bool
-    constraint_scriptHasNFT _ _ = True
 
 

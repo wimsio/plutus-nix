@@ -70,3 +70,23 @@ executable template-exe
       ValidatorLogic,
       Utilities
   default-language:  Haskell2010
+    
+test-suite validatorLogic-test
+  type: exitcode-stdio-1.0
+  hs-source-dirs: tests
+  main-is: Main.hs
+
+  other-modules:
+      ValidatorLogicSpec,
+      ValidatorLogicFormalSpec
+
+  build-depends:
+      base
+    , Template
+    , tasty
+    , tasty-hunit
+    , template-haskell
+    , plutus-ledger-api
+
+  default-language: Haskell2010
+

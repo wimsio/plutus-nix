@@ -1,11 +1,14 @@
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE TemplateHaskell       #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-
-
 module Main where
 
+import Test.Tasty
+import qualified ValidatorLogicSpec        as ValidatorLogicSpec
+import qualified ValidatorLogicFormalSpec  as ValidatorLogicFormalSpec
+
 main :: IO ()
-main = do
-  print $ "..running"
+main =
+  defaultMain $
+    testGroup "All tests"
+      [ ValidatorLogicSpec.tests
+      , ValidatorLogicFormalSpec.tests
+      ]
+

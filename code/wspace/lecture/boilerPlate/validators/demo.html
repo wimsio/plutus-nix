@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,12 +9,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
-    :root {
-      --border-radius: 0.75rem;
-      --border-color: #e0e0e0;
-      --bg-light: #fafafa;
-      --accent: #2563eb;
-    }
+
+  :root {
+    --border-radius: 0.75rem;
+    --border-color: #e0e0e0;
+    --bg-light: #fafafa;
+    --accent: #2563eb;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* ADD THIS */
+  .hidden {
+    display: none;
+  }
+
 
     * {
       box-sizing: border-box;
@@ -264,6 +274,16 @@
     height: 80vh;
   }
 }
+#industry-search {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+
 
   </style>
 </head>
@@ -333,12 +353,39 @@
           <select class="cid-type">
             <option value="">Select Plutus type…</option>
             <option>Integer</option>
-            <option>PubKeyHash</option>
-            <option>POSIXTime</option>
-            <option>CurrencySymbol</option>
-            <option>TokenName</option>
-            <option>BuiltinByteString</option>
-            <option>Bool</option>
+  <option>Bool</option>
+  <option>BuiltinByteString</option>
+  <option>POSIXTime</option>
+  <option>POSIXTimeRange</option>
+  <option>PubKeyHash</option>
+  <option>ScriptHash</option>
+  <option>CurrencySymbol</option>
+  <option>TokenName</option>
+  <option>Value</option>
+  <option>AssetClass</option>
+  <option>Address</option>
+  <option>StakingCredential</option>
+  <option>BuiltinData</option>
+  <option>TxOutRef</option>
+  <option>Maybe Integer</option>
+  <option>Maybe PubKeyHash</option>
+  <option>TxId</option>
+  <option>TxInfo</option>
+  <option>TxOut</option>
+  <option>TxInInfo</option>
+  <option>OutputDatum</option>
+  <option>Maybe ScriptHash</option>
+  <option>Lovelace</option>
+  <option>Ada</option>
+  <option>Interval</option>
+  <option>Slot</option>
+  <option>Time</option>
+  <option>ValidatorHash</option>
+  <option>LowerBound a</option>
+  <option>UpperBound a</option>
+  <option>Natural</option>
+  <option>Credential</option>
+  <option>StakingHash</option>
           </select>
         </div>
       </div>
@@ -376,16 +423,26 @@
     </div>
 
     <!-- Existing Industry dropdown still works when custom mode is off -->
-    <label for="industry">Industry</label>
-    <select id="industry"></select>
+<!-- Search bar for industries / smart contracts -->
+<label for="industry-search">Search smart contracts / industries</label>
+<input
+  type="text"
+  id="industry-search"
+  placeholder="e.g. health, escrow, auction"
+  autocomplete="off"
+/>
 
-    <label for="industry">Industry</label>
-    <select id="industry"></select>
+<label for="industry">Industry</label>
+<select id="industry"></select>
+
+
+    <!-- <label for="industry">Industry</label>
+    <select id="industry"></select> -->
 
     <!-- Left column split: Datum options (left-a) & Redeemer options (left-b) -->
     <div class="left-grid">
       <!-- Datum options -->
-      <div class="subpanel" id="datum-panel">
+      <!-- <div class="subpanel" id="datum-panel">
         <h3>Datum options</h3>
         <div class="custom-datum">
           <label class="toggle">
@@ -412,8 +469,171 @@
           </div>
         </div>
         <div id="datum-area"></div>
-      </div>
+      </div> -->
       <!-- Custom Datum Fields (advanced) -->
+       <!-- <div class="subpanel" id="datum-panel">
+  <h3>Datum options</h3>
+  <div class="custom-datum">
+    <label class="toggle">
+      <input type="checkbox" id="enable-custom-datum">
+      <span>Enable custom datum fields (advanced)</span>
+    </label>
+
+    <div id="custom-datum-section" class="hidden">
+      <small>
+        Add extra datum fields not covered by the templates.
+        These will appear in the datum JSON as <code>customFields</code>.
+      </small>
+
+      <div id="custom-datum-list">
+        <div class="custom-prop-row">
+          <input type="text" placeholder="Field name e.g. extraInfo" disabled />
+          <input type="text" placeholder="Haskell type e.g. Integer" disabled />
+        </div>
+      </div>
+
+      <button type="button" id="add-custom-datum" class="secondary-btn">
+        Add another datum field
+      </button>
+    </div>
+  </div>
+
+
+  <div class="param-datum">
+    <label class="toggle">
+      <input type="checkbox" id="enable-param-datum">
+      <span>Generate parameter datum type (CoxyParamDatum)</span>
+    </label>
+    <small>
+      When enabled, the validator type becomes:
+      <code>CoxyParamDatum -> CoxyDatum -> CoxyRedeemer -> ScriptContext -> Bool</code><br/>
+      <code>CoxyParamDatum</code> will have the same field structure as <code>CoxyDatum</code>.
+    </small>
+  </div>
+
+  <div id="datum-area"></div>
+
+
+</div> -->
+<div class="subpanel" id="datum-panel">
+  <h3>Datum options</h3>
+  <div class="custom-datum">
+    <label class="toggle">
+      <input type="checkbox" id="enable-custom-datum">
+      <span>Enable custom datum fields (advanced)</span>
+    </label>
+
+    <div id="custom-datum-section" class="hidden">
+      <small>
+        Add extra datum fields not covered by the templates.
+        These will appear in the datum JSON as <code>customFields</code>.
+      </small>
+<!-- 
+      <div id="custom-datum-list">
+        <div class="custom-prop-row">
+          <input type="text" placeholder="Field name e.g. extraInfo" disabled />
+          <input type="text" placeholder="Haskell type e.g. Integer" disabled />
+        </div>
+      </div> -->
+<div id="custom-datum-list">
+  <div class="custom-prop-row">
+    <input
+      type="text"
+      class="custom-datum-name"
+      placeholder="Field name e.g. extraInfo"
+      disabled
+    />
+    <select class="custom-datum-type" disabled>
+
+  <option value="">Select Plutus type…</option>
+  <option>Integer</option>
+  <option>Bool</option>
+  <option>BuiltinByteString</option>
+  <option>POSIXTime</option>
+  <option>POSIXTimeRange</option>
+  <option>PubKeyHash</option>
+  <option>ScriptHash</option>
+  <option>CurrencySymbol</option>
+  <option>TokenName</option>
+  <option>Value</option>
+  <option>AssetClass</option>
+  <option>Address</option>
+  <option>StakingCredential</option>
+  <option>BuiltinData</option>
+  <option>TxOutRef</option>
+  <option>Maybe Integer</option>
+  <option>Maybe PubKeyHash</option>
+  <option>TxId</option>
+  <option>TxInfo</option>
+  <option>TxOut</option>
+  <option>TxInInfo</option>
+  <option>OutputDatum</option>
+  <option>Maybe ScriptHash</option>
+  <option>Lovelace</option>
+  <option>Ada</option>
+  <option>Interval</option>
+  <option>Slot</option>
+  <option>Time</option>
+  <option>ValidatorHash</option>
+  <option>LowerBound a</option>
+  <option>UpperBound a</option>
+  <option>Natural</option>
+  <option>Credential</option>
+  <option>StakingHash</option>
+</select>
+  </div>
+</div>
+
+      <button type="button" id="add-custom-datum" class="secondary-btn">
+        Add another datum field
+      </button>
+    </div>
+  </div>
+
+  <!-- ParamDatum toggle + editor -->
+  <div class="param-datum">
+    <label class="toggle">
+      <input type="checkbox" id="enable-param-datum">
+      <span>Generate parameter datum type (CoxyParamDatum)</span>
+    </label>
+    <small>
+      When enabled, the validator type becomes:
+      <code>CoxyParamDatum -> CoxyDatum -> CoxyRedeemer -> ScriptContext -> Bool</code>.
+      Define fields below for <code>CoxyParamDatum</code>.
+    </small>
+
+    <div id="param-datum-section" class="hidden">
+      <small>
+        Fields for <code>CoxyParamDatum</code> (e.g. <code>cpBuyer :: PubKeyHash</code>,
+        <code>cpAmount :: Integer</code>).
+      </small>
+
+      <div id="param-datum-list">
+        <div class="custom-prop-row param-datum-row">
+          <input
+            type="text"
+            class="param-name"
+            placeholder="Field name e.g. buyer"
+            disabled
+          />
+          <input
+            type="text"
+            class="param-type"
+            placeholder="Haskell type e.g. PubKeyHash"
+            disabled
+          />
+        </div>
+      </div>
+
+      <button type="button" id="add-param-datum" class="secondary-btn">
+        Add parameter datum field
+      </button>
+    </div>
+  </div>
+
+  <div id="datum-area"></div>
+</div>
+
     </div>
 
     <br />
@@ -507,5 +727,43 @@
   </div>
 
   <script type="module" src="coxypp.js"></script>
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
 </body>
 </html>

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Coxy Plutus Playground</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="coxy-plutus.css">
+    <script src="https://cdn.jsdelivr.net/npm/pace-js@latest/pace.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pace-js@latest/pace-theme-default.min.css">
+</head>
+</head>
+
+<body class="theme-midnight">
+    <div class="page">
+        <!-- HEADER / TOP BAR -->
+        <div class="header-row">
+            <div class="brand">
+                <div class="brand-logo">CHPB</div>
+                <div class="brand-text">
+                    <h1>Coxy Haskell Plutus Builder</h1>
+                    <p>Cardano Smart Contract Blueprint Studio</p>
+                </div>
+            </div>
+
+            <div class="header-right">
+
+                <!-- Theme selector -->
+                <div class="theme-switcher">
+                    <button type="button" class="theme-pill is-active" data-theme="midnight">
+                        Midnight
+                    </button>
+                    <button type="button" class="theme-pill" data-theme="sunrise">
+                        Sunrise
+                    </button>
+                    <button type="button" class="theme-pill" data-theme="forest">
+                        Forest
+                    </button>
+                    <button type="button" class="theme-pill" data-theme="terminal">
+                        Terminal
+                    </button>
+                    <button type="button" class="theme-pill" data-theme="solarized">
+                        Solarized
+                    </button>
+                    <button type="button" class="theme-pill" data-theme="cardano">
+                        Cardano
+                    </button>
+                </div>
+
+                <!-- Compact mode toggle -->
+                <label class="compact-toggle">
+                    <input type="checkbox" id="compact-toggle">
+                    <span class="compact-toggle-slider"></span>
+                    <span class="compact-toggle-text">Compact</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- ROW 1: 1) Search  2) Industry  3) Custom toggle -->
+        <div class="row row--3">
+            <!-- Column 1: Search -->
+            <div class="col">
+                <div class="step-block">
+                    <div class="step-title">1. Search Smart Contract Or Industry</div>
+                    <div class="step-row">
+                        <input type="text" id="industry-search" placeholder="Search..." autocomplete="off" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2: Industry select -->
+            <div class="col">
+                <div class="step-block">
+                    <div class="step-title">2. Smart Contract Industry</div>
+                    <div class="step-subtitle">Select smart contract industry</div>
+                    <div class="step-row">
+                        <select id="industry"></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 3: Custom toggle only -->
+            <div class="col">
+                <div class="step-block">
+                    <div class="step-title">3. Create Custom Smart Contract</div>
+                    <div class="step-row" style="justify-content: space-between;">
+                        <span class="step-subtitle">Create custom smart contract / industry</span>
+                        <label class="custom-toggle-label">
+                            <input type="checkbox" id="enable-custom-industry" />
+                            <span class="custom-toggle-box"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 2 (CUSTOM): Contract title / Datum / Redeemer  -->
+        <div id="custom-industry-section" class="row row--3 hidden" style="display:none">
+            <!-- Column 1: Contract title & type names -->
+            <div class="col">
+                <div class="subpanel">
+                    <h3>Custom Contract Title</h3>
+
+                    <div class="custom-prop-row">
+                        <label for="custom-contract-title">Contract title (for UI / Haskell module)</label>
+                        <input type="text" id="custom-contract-title" placeholder="e.g. CustomEscrow, MyAmmValidator" />
+                    </div>
+
+                    <div class="custom-prop-row">
+                        <input type="text" id="custom-industry-id" placeholder="Industry id (e.g. customEscrow)" />
+                        <input type="text" id="custom-industry-label" placeholder="Industry label (e.g. Custom Escrow Contract)" />
+                    </div>
+
+                    <div class="custom-prop-row">
+                        <input type="text" id="custom-datum-type" placeholder="Datum type name (e.g. CustomDatum)" />
+                        <input type="text" id="custom-redeemer-type" placeholder="Redeemer type name (e.g. CustomRedeemer)" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2: Custom datum -->
+            <div class="col">
+                <div class="subpanel">
+                    <h3>Custom Datum</h3>
+                    <small>
+                        Add as many datum fields as you want. Each field has a name and a Plutus type.
+                    </small>
+
+                    <div id="custom-industry-datum-list">
+                        <div class="custom-prop-row custom-industry-datum-row">
+                            <input type="text" class="cid-name" placeholder="Field name e.g. seller" />
+                            <select class="cid-type">
+                                <option value="">Select Plutus type…</option>
+                                <option>Integer</option>
+                                <option>Bool</option>
+                                <option>BuiltinByteString</option>
+                                <option>POSIXTime</option>
+                                <option>POSIXTimeRange</option>
+                                <option>PubKeyHash</option>
+                                <option>ScriptHash</option>
+                                <option>CurrencySymbol</option>
+                                <option>TokenName</option>
+                                <option>Value</option>
+                                <option>AssetClass</option>
+                                <option>Address</option>
+                                <option>StakingCredential</option>
+                                <option>BuiltinData</option>
+                                <option>TxOutRef</option>
+                                <option>Maybe Integer</option>
+                                <option>Maybe PubKeyHash</option>
+                                <option>TxId</option>
+                                <option>TxInfo</option>
+                                <option>TxOut</option>
+                                <option>TxInInfo</option>
+                                <option>OutputDatum</option>
+                                <option>Maybe ScriptHash</option>
+                                <option>Lovelace</option>
+                                <option>Ada</option>
+                                <option>Interval</option>
+                                <option>Slot</option>
+                                <option>Time</option>
+                                <option>ValidatorHash</option>
+                                <option>LowerBound a</option>
+                                <option>UpperBound a</option>
+                                <option>Natural</option>
+                                <option>Credential</option>
+                                <option>StakingHash</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="button" id="add-custom-industry-datum" class="primary-btn">
+                        + Add datum field
+                    </button>
+                </div>
+            </div>
+
+            <!-- Column 3: Custom redeemer -->
+            <div class="col">
+                <div class="subpanel">
+                    <h3>Custom Redeemer</h3>
+                    <small>
+                        Add one or more redeemer constructors (e.g. PaySeller, RefundBuyer).
+                    </small>
+
+                    <div id="custom-industry-actions-list">
+                        <div class="custom-prop-row custom-industry-action-row">
+                            <input type="text" class="cia-name" placeholder="Action name e.g. PaySeller" />
+                            <input type="text" class="cia-label" placeholder="Label / description (optional)" />
+                        </div>
+                    </div>
+
+                    <button type="button" id="add-custom-industry-action" class="primary-btn">
+                        + Add action
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ROW 3 (STANDARD): Datum / Redeemer / Preview -->
+        <div class="row row--3" id="standard-row-2">
+            <!-- Datum panel -->
+            <div class="col">
+                <div class="subpanel" id="datum-panel">
+                    <h3>Coxy Datum</h3>
+
+                    <div id="datum-area" style="margin-top:0.5rem;"></div>
+                    <hr>
+
+                    <div class="custom-datum">
+                        <label class="toggle">
+                            <input type="checkbox" id="enable-custom-datum">
+                            <span>Enable Custom Datum Fields (advanced users)</span>
+                        </label>
+
+                        <div id="custom-datum-section" class="hidden"><br>
+                            <small>
+                                Add extra datum fields not covered by the templates.
+                                These will appear in the datum JSON as <code>customFields</code>.
+                            </small><br><br>
+
+                            <div id="custom-datum-list">
+                                <div class="custom-prop-row">
+                                    <input type="text" class="custom-datum-name" placeholder="Field name e.g. extraInfo" value="FieldOne" disabled />
+                                    <select class="custom-datum-type" disabled>
+                                        <option value="TokenName">Select Plutus type…</option>
+                                        <option>Integer</option>
+                                        <option>Bool</option>
+                                        <option>BuiltinByteString</option>
+                                        <option>POSIXTime</option>
+                                        <option>POSIXTimeRange</option>
+                                        <option>PubKeyHash</option>
+                                        <option>ScriptHash</option>
+                                        <option>CurrencySymbol</option>
+                                        <option>TokenName</option>
+                                        <option>Value</option>
+                                        <option>AssetClass</option>
+                                        <option>Address</option>
+                                        <option>StakingCredential</option>
+                                        <option>BuiltinData</option>
+                                        <option>TxOutRef</option>
+                                        <option>Maybe Integer</option>
+                                        <option>Maybe PubKeyHash</option>
+                                        <option>TxId</option>
+                                        <option>TxInfo</option>
+                                        <option>TxOut</option>
+                                        <option>TxInInfo</option>
+                                        <option>OutputDatum</option>
+                                        <option>Maybe ScriptHash</option>
+                                        <option>Lovelace</option>
+                                        <option>Ada</option>
+                                        <option>Interval</option>
+                                        <option>Slot</option>
+                                        <option>Time</option>
+                                        <option>ValidatorHash</option>
+                                        <option>LowerBound a</option>
+                                        <option>UpperBound a</option>
+                                        <option>Natural</option>
+                                        <option>Credential</option>
+                                        <option>StakingHash</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="button" id="add-custom-datum" class="primary-btn">
+                                Add another datum field
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Param datum -->
+                    <div class="param-datum" style="margin-top:0.5rem;">
+                        <label class="toggle">
+                            <input type="checkbox" id="enable-param-datum">
+                            <span>Generate parameter datum type (CoxyParamDatum)</span>
+                        </label><br>
+                        <small>
+                            When enabled, the validator type becomes:
+                            <code>CoxyParamDatum -> CoxyDatum -> CoxyRedeemer -> ScriptContext -> Bool</code>.
+                            Define fields below for <code>CoxyParamDatum</code>.
+                        </small><br><br>
+
+                        <div id="param-datum-section" class="hidden">
+                            <small>
+                                Fields for <code>CoxyParamDatum</code> (e.g. <code>cpBuyer :: PubKeyHash</code>,
+                                <code>cpAmount :: Integer</code>).
+                            </small>
+
+                            <div id="param-datum-list">
+                                <div class="custom-prop-row param-datum-row">
+                                    <input type="text" class="param-name" placeholder="Field name e.g. buyer" disabled />
+                                    <select class="param-type">
+                                        <option value="">Select Plutus type…</option>
+                                        <option>Integer</option>
+                                        <option>Bool</option>
+                                        <option>BuiltinByteString</option>
+                                        <option>POSIXTime</option>
+                                        <option>POSIXTimeRange</option>
+                                        <option>PubKeyHash</option>
+                                        <option>ScriptHash</option>
+                                        <option>CurrencySymbol</option>
+                                        <option>TokenName</option>
+                                        <option>Value</option>
+                                        <option>AssetClass</option>
+                                        <option>Address</option>
+                                        <option>StakingCredential</option>
+                                        <option>BuiltinData</option>
+                                        <option>TxOutRef</option>
+                                        <option>Maybe Integer</option>
+                                        <option>Maybe PubKeyHash</option>
+                                        <option>TxId</option>
+                                        <option>TxInfo</option>
+                                        <option>TxOut</option>
+                                        <option>TxInInfo</option>
+                                        <option>OutputDatum</option>
+                                        <option>Maybe ScriptHash</option>
+                                        <option>Lovelace</option>
+                                        <option>Ada</option>
+                                        <option>Interval</option>
+                                        <option>Slot</option>
+                                        <option>Time</option>
+                                        <option>ValidatorHash</option>
+                                        <option>LowerBound a</option>
+                                        <option>UpperBound a</option>
+                                        <option>Natural</option>
+                                        <option>Credential</option>
+                                        <option>StakingHash</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="button" id="add-param-datum" class="primary-btn">
+                                Add parameter datum field
+                            </button>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+
+            <!-- Redeemer panel -->
+            <div class="col">
+                <div class="subpanel" id="redeemer-panel">
+                    <h3>Coxy Redeemer</h3>
+
+                    <div id="actions-area" style="margin-top:0.5rem;"></div>
+                    <hr>
+
+                    <div class="custom-redeemer">
+                        <label class="toggle">
+                            <input type="checkbox" id="enable-custom-redeemer">
+                            <span>Enable Custom Redeemer Actions (advanced-users)</span>
+                        </label>
+
+                        <div id="custom-redeemer-section" class="hidden"><br>
+                            <small>
+                                Define extra redeemer constructors for special cases.
+                                These will appear in the redeemer JSON as <code>customActions</code>.
+                            </small><br><br>
+
+                            <div id="custom-redeemer-list">
+                                <div class="custom-prop-row">
+                                    <input type="text" placeholder="Action name e.g. EmergencyClose" value="ActionOne" disabled />
+                                    <input type="text" placeholder="Description (optional)" value="First Action of Demo Redeemer" disabled />
+                                </div>
+                            </div>
+
+                            <button type="button" id="add-custom-redeemer" class="primary-btn">
+                                Add another action
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Preview panel -->
+            <div class="col">
+                <div class="subpanel" id="preview-panel">
+                    <div class="col">
+                        <div class="subpanel">
+                            <h3>Datum JSON</h3>
+                            <textarea id="datum-json-output" readonly></textarea>
+                        </div>
+                    </div>
+
+                    <div class="col">
+                        <div class="subpanel">
+                            <h3>Redeemer JSON</h3>
+                            <textarea id="redeemer-json-output" readonly></textarea>
+                        </div>
+                    </div>
+
+                    <div class="col">
+                        <div class="subpanel">
+                            <div class="panel-header-row">
+                                <h3>Haskell mkValidator Preview</h3>
+                            </div>
+                            <textarea id="haskell-output" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <button id="generate" type="button" class="primary-btn">
+                Generate Validator Logic Spec
+            </button>
+        </div>
+
+        <div class="row row--3">
+            <!-- Column 1: Full Haskell module -->
+            <div class="col">
+                <div class="subpanel">
+                    <div class="panel-header-row">
+                        <h3>ValidatorLogic.hs</h3>
+                    </div>
+                    <div class="haskell-editor-wrapper">
+                        <button type="button" class="primary-btn" style="width: 80px; margin-bottom: 8px; position: absolute; right: 30px; top: 40px;" id="copy-haskell-full-output">
+                            Copy
+                        </button>
+                        <textarea id="haskell-full-output" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 2: Shape / basic tests -->
+            <div class="col">
+                <div class="subpanel">
+                    <div class="panel-header-row">
+                        <h3>ValidatorLogicSpec.hs</h3>
+                    </div>
+                    <div class="haskell-editor-wrapper">
+                        <button type="button" class="primary-btn" style="width: 80px; margin-bottom: 8px; position: absolute; right: 30px; top: 40px;" id="copy-plutus-tests-output">
+                            Copy
+                        </button>
+                        <textarea id="plutus-tests-output" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Column 3: Formal/spec-level tests -->
+            <div class="col">
+                <div class="subpanel">
+                    <div class="panel-header-row">
+                        <h3>ValidatorLogicFormalSpec.hs</h3>
+                    </div>
+                    <div class="haskell-editor-wrapper">
+                        <button type="button" class="primary-btn" style="width: 80px; margin-bottom: 8px; position: absolute; right: 30px; top: 40px;" id="copy-formal-tests-output">
+                            Copy
+                        </button>
+                        <textarea id="formal-tests-output" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download button + footer in their own row under the two columns -->
+        <div class="row">
+            <div class="col">
+                <button id="download-hs" type="button" class="primary-btn">
+                    Download ValidatorLogic.hs
+                </button>
+
+                <button id="download-tests-hs" type="button" class="primary-btn" style="margin-top: 0.5rem;">
+                    Download ValidatorLogicSpec.hs
+                </button>
+
+                <button id="download-formal-hs" type="button" class="primary-btn" style="margin-top: 0.5rem;">
+                    Download ValidatorLogicFormalSpec.hs
+                </button>
+
+                <div style="text-align:center" class="footer-text">
+                    MIT Licence @Coxygen Global (Pty) Ltd 2025
+                    <a href="https://github.com/wimsio/plutus-nix">Github</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="coxy-plutus.js"></script>
+
+    <script type="module">
+        const THEME_KEY = "coxy_plutus_theme";
+        const COMPACT_KEY = "coxy_plutus_compact";
+        const themes = ["midnight", "sunrise", "forest", "terminal", "solarized", "cardano"];
+
+        const applyTheme = (name) => {
+            const body = document.body;
+            themes.forEach(t => body.classList.remove("theme-" + t));
+            body.classList.add("theme-" + name);
+
+            document.querySelectorAll(".theme-pill").forEach(btn => {
+                btn.classList.toggle("is-active", btn.dataset.theme === name);
+            });
+
+            try {
+                localStorage.setItem(THEME_KEY, name);
+            } catch (e) {
+                // ignore storage errors
+            }
+        };
+
+        document.querySelectorAll(".theme-pill").forEach(btn => {
+            btn.addEventListener("click", () => applyTheme(btn.dataset.theme));
+        });
+
+        const compactCheckbox = document.getElementById("compact-toggle");
+
+        const applyCompact = (enabled) => {
+            document.body.classList.toggle("compact-mode", enabled);
+            compactCheckbox.checked = !!enabled;
+            try {
+                localStorage.setItem(COMPACT_KEY, enabled ? "1" : "0");
+            } catch (e) {
+                // ignore storage errors
+            }
+        };
+
+        compactCheckbox.addEventListener("change", () => {
+            applyCompact(compactCheckbox.checked);
+        });
+
+        let savedTheme = null;
+        let savedCompact = null;
+        try {
+            savedTheme = localStorage.getItem(THEME_KEY);
+            savedCompact = localStorage.getItem(COMPACT_KEY);
+        } catch (e) {}
+
+        // root already has the correct class from the <head> script,
+        // we just need to sync the pills and (if needed) default theme.
+        if (savedTheme && themes.includes(savedTheme)) {
+            applyTheme(savedTheme);
+        } else {
+            applyTheme("midnight");
+        }
+
+        applyCompact(savedCompact === "1");
+    </script>
+</body>
+
+</html>
