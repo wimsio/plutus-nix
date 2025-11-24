@@ -234,109 +234,142 @@ window.addEventListener("DOMContentLoaded", () => {
   // -------------------------------------------------------------------
   // Custom industry builder
   // -------------------------------------------------------------------
-  function getCustomIndustryFromUI() {
-    const titleInput        = document.getElementById("custom-contract-title");
-    const customIdInput     = document.getElementById("custom-industry-id");
-    const customLabelInput  = document.getElementById("custom-industry-label");
-    const datumTypeInput    = document.getElementById("custom-datum-type");
-    const redeemerTypeInput = document.getElementById("custom-redeemer-type");
+function getCustomIndustryFromUI() {
+  const titleInput        = document.getElementById("custom-contract-title");
+  const customIdInput     = document.getElementById("custom-industry-id");
+  const customLabelInput  = document.getElementById("custom-industry-label");
+  const datumTypeInput    = document.getElementById("custom-datum-type");
+  const redeemerTypeInput = document.getElementById("custom-redeemer-type");
 
-    const title        = (titleInput?.value || "").trim() || "CustomContract";
-    const id           = (customIdInput?.value || "").trim() || "customContract";
-    const label        = (customLabelInput?.value || "").trim() || title;
-    const datumType    = (datumTypeInput?.value || "").trim() || "CoxyDatum";
-    const redeemerType = (redeemerTypeInput?.value || "").trim() || "CoxyRedeemer";
+  const title        = (titleInput?.value || "").trim() || "CustomContract";
+  const id           = (customIdInput?.value || "").trim() || "customContract";
+  const label        = (customLabelInput?.value || "").trim() || title;
+  const datumType    = (datumTypeInput?.value || "").trim() || "CoxyDatum";
+  const redeemerType = (redeemerTypeInput?.value || "").trim() || "CoxyRedeemer";
 
-    // DATUM FIELDS: custom-industry + advanced CoxyDatum
-    const datumRows = Array.from(
-      customIndustryDatumList?.querySelectorAll(".custom-industry-datum-row") || []
-    );
+  // ---------------------------------------------------------------
+  // DATUM FIELDS: custom-industry + advanced CoxyDatum
+  // ---------------------------------------------------------------
+  const datumRows = Array.from(
+    customIndustryDatumList?.querySelectorAll(".custom-industry-datum-row") || []
+  );
 
-    const baseDatumFields = datumRows
-      .map(row => {
-        const nameEl = row.querySelector(".cid-name");
-        const typeEl = row.querySelector(".cid-type");
-        const name   = (nameEl?.value || "").trim();
-        const type   = (typeEl?.value || "").trim();
-        if (!name || !type) return null;
-        return { id: name, label: `${name} :: ${type}`, type };
-      })
-      .filter(Boolean);
+  const baseDatumFields = datumRows
+    .map(row => {
+      const nameEl = row.querySelector(".cid-name");
+      const typeEl = row.querySelector(".cid-type");
+      const name   = (nameEl?.value || "").trim();
+      const type   = (typeEl?.value || "").trim();
+      if (!name || !type) return null;
+      return { id: name, label: `${name} :: ${type}`, type };
+    })
+    .filter(Boolean);
 
-    const extraDatumFields = [];
-    if (customDatumList && customDatumToggle && customDatumToggle.checked) {
-      const advRows = customDatumList.querySelectorAll(".custom-prop-row");
-      advRows.forEach(row => {
-        const nameEl = row.querySelector(".custom-datum-name");
-        const typeEl = row.querySelector(".custom-datum-type");
-        const name   = (nameEl?.value || "").trim();
-        const type   = (typeEl?.value || "").trim();
-        if (!name || !type) return;
-        extraDatumFields.push({
-          id: name,
-          label: `${name} :: ${type}`,
-          type
-        });
+  const extraDatumFields = [];
+  if (customDatumList && customDatumToggle && customDatumToggle.checked) {
+    const advRows = customDatumList.querySelectorAll(".custom-prop-row");
+    advRows.forEach(row => {
+      const nameEl = row.querySelector(".custom-datum-name");
+      const typeEl = row.querySelector(".custom-datum-type");
+      const name   = (nameEl?.value || "").trim();
+      const type   = (typeEl?.value || "").trim();
+      if (!name || !type) return;
+      extraDatumFields.push({
+        id: name,
+        label: `${name} :: ${type}`,
+        type
       });
-    }
-
-    const datumFields = [...baseDatumFields, ...extraDatumFields];
-    if (!datumFields.length) {
-      alert("Please add at least one datum field for your custom contract.");
-      return null;
-    }
-
-    // REDEEMER ACTIONS: custom industry + advanced actions
-    const actionRows = Array.from(
-      customIndustryActionsList?.querySelectorAll(".custom-industry-action-row") || []
-    );
-
-    const baseActions = actionRows
-      .map(row => {
-        const nameEl  = row.querySelector(".cia-name");
-        const labelEl = row.querySelector(".cia-label");
-        const name      = (nameEl?.value || "").trim();
-        const labelText = (labelEl?.value || "").trim();
-        if (!name) return null;
-        return { id: name, label: labelText || name };
-      })
-      .filter(Boolean);
-
-    const extraActions = [];
-    if (customRedeemerList && customRedeemerToggle && customRedeemerToggle.checked) {
-      const advRows = customRedeemerList.querySelectorAll(".custom-prop-row");
-      advRows.forEach(row => {
-        const inputs = row.querySelectorAll('input[type="text"]');
-        if (!inputs.length) return;
-        const name = (inputs[0].value || "").trim();
-        const desc = inputs.length > 1 ? (inputs[1].value || "").trim() : "";
-        if (!name) return;
-        extraActions.push({
-          id: name,
-          label: desc || name
-        });
-      });
-    }
-
-    const actions = [...baseActions, ...extraActions];
-    if (!actions.length) {
-      alert("Please add at least one redeemer action for your custom contract.");
-      return null;
-    }
-
-    return {
-      id,
-      label,
-      datumType,
-      redeemerType,
-      datumFields,
-      actions,
-      constraints: [],
-      defaultActionConstraints: {},
-      isCustom: true,
-      contractTitle: title
-    };
+    });
   }
+
+  let datumFields = [...baseDatumFields, ...extraDatumFields];
+
+  // If user hasn't defined any datum fields, seed a default one
+  if (!datumFields.length) {
+    datumFields = [
+      { id: "fieldOne", label: "fieldOne :: PubKeyHash", type: "PubKeyHash" }
+    ];
+
+    // Also show it in the UI if nothing is there yet
+    if (customIndustryDatumList && !customIndustryDatumList.children.length) {
+      const row = createCustomIndustryDatumRow();
+      const nameEl = row.querySelector(".cid-name");
+      const typeEl = row.querySelector(".cid-type");
+      if (nameEl) nameEl.value = "fieldOne";
+      if (typeEl) typeEl.value = "PubKeyHash";
+      customIndustryDatumList.appendChild(row);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // REDEEMER ACTIONS: custom-industry + advanced actions
+  // ---------------------------------------------------------------
+  const actionRows = Array.from(
+    customIndustryActionsList?.querySelectorAll(".custom-industry-action-row") || []
+  );
+
+  const baseActions = actionRows
+    .map(row => {
+      const nameEl  = row.querySelector(".cia-name");
+      const labelEl = row.querySelector(".cia-label");
+      const name      = (nameEl?.value || "").trim();
+      const labelText = (labelEl?.value || "").trim();
+      if (!name) return null;
+      return { id: name, label: labelText || name };
+    })
+    .filter(Boolean);
+
+  const extraActions = [];
+  if (customRedeemerList && customRedeemerToggle && customRedeemerToggle.checked) {
+    const advRows = customRedeemerList.querySelectorAll(".custom-prop-row");
+    advRows.forEach(row => {
+      const inputs = row.querySelectorAll('input[type="text"]');
+      if (!inputs.length) return;
+      const name = (inputs[0].value || "").trim();
+      const desc = inputs.length > 1 ? (inputs[1].value || "").trim() : "";
+      if (!name) return;
+      extraActions.push({
+        id: name,
+        label: desc || name
+      });
+    });
+  }
+
+  let actions = [...baseActions, ...extraActions];
+
+  // If user hasn't defined any actions, seed the demo one
+  if (!actions.length) {
+    actions = [
+      { id: "ActionOne", label: "First Action of Demo Redeemer" }
+    ];
+
+    // Also reflect this in the UI if there are no rows yet
+    if (customIndustryActionsList && !customIndustryActionsList.children.length) {
+      const row = createCustomIndustryActionRow();
+      const nameEl  = row.querySelector(".cia-name");
+      const labelEl = row.querySelector(".cia-label");
+      if (nameEl)  nameEl.value  = "ActionOne";
+      if (labelEl) labelEl.value = "First Action of Demo Redeemer";
+      customIndustryActionsList.appendChild(row);
+    }
+  }
+
+  // ---------------------------------------------------------------
+  // Return custom industry descriptor
+  // ---------------------------------------------------------------
+  return {
+    id,
+    label,
+    datumType,
+    redeemerType,
+    datumFields,
+    actions,
+    constraints: [],
+    defaultActionConstraints: {},
+    isCustom: true,
+    contractTitle: title
+  };
+}
 
   // -------------------------------------------------------------------
   // Industry dropdown + rendering
