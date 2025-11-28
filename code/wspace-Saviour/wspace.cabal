@@ -83,8 +83,8 @@ executable escrow-exe
         cardano-ledger-shelley
     default-language:   Haskell2010
 
-executable snapshot-exe
-    main-is:            Snapshot.hs
+executable esusu-exe
+    main-is:            Trustless-Esusu.hs
     hs-source-dirs:     tests
     build-depends:
         base >=4.14 && <5,
@@ -134,23 +134,6 @@ executable milestone-escrow-exe
         cardano-ledger-shelley
     default-language:   Haskell2010
 
-executable amm-exe
-    main-is:            Amm.hs
-    hs-source-dirs:     tests
-    build-depends:
-        base >=4.14 && <5,
-        plutus-ledger-api,
-        plutus-tx,
-        plutus-tx-plugin,
-        bytestring,
-        serialise,
-        text,
-        containers,
-        cardano-api,
-        cardano-ledger-core,
-        cardano-ledger-shelley
-    default-language:   Haskell2010
-
 executable aviation-exe
     main-is:            Aviation-Maintenance.hs
     hs-source-dirs:     tests
@@ -185,42 +168,8 @@ executable synthetic-assets-exe
         cardano-ledger-shelley
     default-language:   Haskell2010
 
-executable limit-order-exe
-    main-is:            Limit-Order.hs
-    hs-source-dirs:     tests
-    build-depends:
-        base >=4.14 && <5,
-        plutus-ledger-api,
-        plutus-tx,
-        plutus-tx-plugin,
-        bytestring,
-        serialise,
-        text,
-        containers,
-        cardano-api,
-        cardano-ledger-core,
-        cardano-ledger-shelley
-    default-language:   Haskell2010
-
 executable rebase-token-policy-exe
     main-is:            Rebase-Token-Policy.hs
-    hs-source-dirs:     tests
-    build-depends:
-        base >=4.14 && <5,
-        plutus-ledger-api,
-        plutus-tx,
-        plutus-tx-plugin,
-        bytestring,
-        serialise,
-        text,
-        containers,
-        cardano-api,
-        cardano-ledger-core,
-        cardano-ledger-shelley
-    default-language:   Haskell2010
-
-executable energy-p2p-exe
-    main-is:            Energyp2p.hs
     hs-source-dirs:     tests
     build-depends:
         base >=4.14 && <5,
