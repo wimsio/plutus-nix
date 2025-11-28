@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Rebase Token Protocol Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .success {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .math-formula {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: "Cambria Math", serif;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .state-machine {
+      background: #fff;
+      border: 2px solid #002b45;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .state {
+      background: #002b45;
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .rebase-example {
+      background: #f0f7ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid #2196f3;
+    }
+    .governance {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🔄 Rebase Token Protocol Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Rebase Token Protocol smart contract, which implements an elastic supply token system with governance-controlled supply adjustments. The contract enables algorithmic stablecoins and elastic tokens that automatically adjust their supply to maintain target prices or other economic objectives.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-rebase-actions">🎯 Rebase Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-rebase-mechanics">📊 Rebase Mechanics</a></li>
+    <li><a href="#7-core-policy-logic">🧠 Core Policy Logic</a></li>
+    <li><a href="#8-governance-system">⚖️ Governance System</a></li>
+    <li><a href="#9-rebase-workflow">🔄 Rebase Workflow</a></li>
+    <li><a href="#10-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#11-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#12-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Rebase Token Protocol implements a sophisticated elastic supply system that:</p>
+
+  <ul>
+    <li><strong>Enables supply adjustments</strong> through rebase operations</li>
+    <li><strong>Implements multi-signature governance</strong> for parameter changes</li>
+    <li><strong>Supports controlled minting and burning</strong> of tokens</li>
+    <li><strong>Uses reference inputs</strong> for efficient state management</li>
+    <li><strong>Provides bounds protection</strong> with minimum and maximum factors</li>
+  </ul>
+
+  <div class="note">
+    <strong>Elastic Supply Concept:</strong> Rebase tokens automatically adjust their circulating supply to maintain price stability or other economic targets, similar to Ampleforth or other algorithmic stablecoins.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>CurrencySymbol</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>, <code>txInfoReferenceInputs</code>)</li>
+    <li><strong>PlutusTx.AssocMap</strong>: Map operations for value processing</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for minting policies</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>RebaseDatum</code></h3>
+  <p>Stores the governance and control parameters for the rebase token:</p>
+  <ul>
+    <li><strong>rdGovernors</strong>: List of authorized governor public key hashes</li>
+    <li><strong>rdFactor</strong>: Current rebase factor (scaled integer, e.g., 1.05 → 1050000)</li>
+    <li><strong>rdMin</strong>: Minimum allowed rebase factor</li>
+    <li><strong>rdMax</strong>: Maximum allowed rebase factor</li>
+  </ul>
+
+  <pre><code>data RebaseDatum = RebaseDatum
+    { rdGovernors :: [PubKeyHash]
+    , rdFactor    :: Integer   -- scaled (e.g. 1.05 → 1050000)
+    , rdMin       :: Integer
+    , rdMax       :: Integer
+    }</code></pre>
+
+  <h3>Scaled Integer Representation</h3>
+  <table>
+    <tr><th>Actual Value</th><th>Scaled Representation</th><th>Precision</th></tr>
+    <tr><td>1.00</td><td>1000000</td><td>6 decimal places</td></tr>
+    <tr><td>1.05</td><td>1050000</td><td>5% increase</td></tr>
+    <tr><td>0.95</td><td>950000</td><td>5% decrease</td></tr>
+    <tr><td>2.00</td><td>2000000</td><td>100% increase</td></tr>
+  </table>
+
+  <h2 id="4-rebase-actions">4. 🎯 Rebase Actions</h2>
+
+  <h3><code>RebaseAction</code></h3>
+  <p>Defines the three core operations for token management:</p>
+
+  <div class="info">
+    <strong>Rebase factor</strong><br>
+    Adjust the token supply by applying a new rebase factor. Requires governor authorization and stays within bounds.
+  </div>
+
+  <div class="success">
+    <strong>MintSome amount</strong><br>
+    Create new tokens. Restricted to governors only and requires positive amount.
+  </div>
+
+  <div class="danger">
+    <strong>BurnSome amount</strong><br>
+    Destroy existing tokens. Can be executed by anyone to reduce their token holdings.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>isGovernor</code></h3>
+  <pre><code>{-# INLINABLE isGovernor #-}
+isGovernor :: TxInfo -> [PubKeyHash] -> Bool
+isGovernor info govs = any (\g -> txSignedBy info g) govs</code></pre>
+  <p>Checks if any governor has signed the transaction.</p>
+
+  <h3><code>findController</code></h3>
+  <pre><code>{-# INLINABLE findController #-}
+findController :: ScriptContext -> RebaseDatum
+findController ctx =
+    case [ d
+         | i <- txInfoReferenceInputs info
+         , let o = txInInfoResolved i
+         , Just d <- [fromBuiltinData @RebaseDatum (extractDatum o)]
+         ] of
+        [d] -> d
+        _   -> traceError "controller ref missing/duplicated"</code></pre>
+  <p>Retrieves the controller datum from reference inputs for state management.</p>
+
+  <h3><code>checkMint</code> / <code>checkBurn</code></h3>
+  <pre><code>{-# INLINABLE checkMint #-}
+checkMint :: TxInfo -> Integer -> Bool
+checkMint info amt =
+    case flattenValue (txInfoMint info) of
+    [(cs, tn, q)] -> q == amt
+    _             -> traceError "unexpected mint"</code></pre>
+  <p>Validates that minting/burning operations match expected amounts and token types.</p>
+
+  <h2 id="6-rebase-mechanics">6. 📊 Rebase Mechanics</h2>
+
+  <h3>Rebase Factor Calculation</h3>
+  <div class="math-formula">
+    New Token Balance = Old Token Balance × (Rebase Factor ÷ Scaling Factor)
+  </div>
+
+  <div class="rebase-example">
+    <h3>Rebase Operation Example</h3>
+    <pre><code>Initial State:
+  Total Supply: 1,000,000 tokens
+  Rebase Factor: 1000000 (1.00)
+  User A: 100 tokens
+  User B: 200 tokens
+
+Rebase Operation:
+  New Factor: 1050000 (5% increase)
+  Scaling: 1,000,000 × (1050000 ÷ 1000000) = 1,050,000 total supply
+  User A: 100 × 1.05 = 105 tokens
+  User B: 200 × 1.05 = 210 tokens
+
+Result: All holders' balances increased by 5% proportionally</code></pre>
+  </div>
+
+  <h3>Supply Adjustment Scenarios</h3>
+  <table>
+    <tr><th>Scenario</th><th>Rebase Factor</th><th>Supply Change</th><th>Holder Impact</th></tr>
+    <tr><td>Price too high</td><td>1050000</td><td>+5% supply</td><td>All balances increase 5%</td></tr>
+    <tr><td>Price too low</td><td>950000</td><td>-5% supply</td><td>All balances decrease 5%</td></tr>
+    <tr><td>Stable price</td><td>1000000</td><td>No change</td><td>No balance changes</td></tr>
+  </table>
+
+  <h2 id="7-core-policy-logic">7. 🧠 Core Policy Logic</h2>
+
+  <h3><code>mkPolicy</code></h3>
+  <p>The main minting policy that enforces rebase token rules:</p>
+
+  <h4>Rebase Validation</h4>
+  <ul>
+    <li>✅ Must be signed by at least one governor</li>
+    <li>✅ New factor must be within min/max bounds</li>
+    <li>❌ Fails if no governor signature</li>
+    <li>❌ Fails if factor outside allowed range</li>
+  </ul>
+
+  <h4>MintSome Validation</h4>
+  <ul>
+    <li>✅ Must be signed by at least one governor</li>
+    <li>✅ Amount must be positive</li>
+    <li>✅ Mint transaction must match specified amount</li>
+    <li>❌ Fails if no governor signature</li>
+    <li>❌ Fails if zero or negative amount</li>
+    <li>❌ Fails if mint amount mismatch</li>
+  </ul>
+
+  <h4>BurnSome Validation</h4>
+  <ul>
+    <li>✅ Amount must be positive</li>
+    <li>✅ Burn transaction must match specified amount</li>
+    <li>✅ Can be executed by anyone</li>
+    <li>❌ Fails if zero or negative amount</li>
+    <li>❌ Fails if burn amount mismatch</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Reference Inputs:</strong> This contract uses reference inputs (Babbage era feature) to efficiently read the controller state without spending the UTxO, enabling multiple operations to reference the same governance parameters.
+  </div>
+
+  <h2 id="8-governance-system">8. ⚖️ Governance System</h2>
+
+  <div class="governance">
+    <h3>Multi-Signature Governance</h3>
+    
+    <h4>Governor Roles</h4>
+    <pre><code>Example Governance Setup:
+rdGovernors = ["gov1_pkh", "gov2_pkh", "gov3_pkh", "gov4_pkh", "gov5_pkh"]</code></pre>
+
+    <h4>Authorization Rules</h4>
+    <ul>
+      <li>Any single governor can execute Rebase operations</li>
+      <li>Any single governor can execute MintSome operations</li>
+      <li>No governance required for BurnSome operations</li>
+      <li>Multi-sig can be implemented by requiring multiple signatures</li>
+    </ul>
+
+    <h4>Parameter Controls</h4>
+    <table>
+      <tr><th>Parameter</th><th>Purpose</th><th>Typical Values</th></tr>
+      <tr><td>rdMin</td><td>Minimum rebase factor</td><td>900000 (10% decrease max)</td></tr>
+      <tr><td>rdMax</td><td>Maximum rebase factor</td><td>1100000 (10% increase max)</td></tr>
+      <tr><td>rdFactor</td><td>Current factor</td><td>1000000 (neutral)</td></tr>
+    </table>
+  </div>
+
+  <h2 id="9-rebase-workflow">9. 🔄 Rebase Workflow</h2>
+
+  <div class="workflow">
+    <h3>Complete Token Lifecycle</h3>
+
+    <div class="state-machine">
+      <div class="state">🚀 Token Initialization</div>
+      
+      <h4>1. Initial Token Setup</h4>
+      <pre><code>RebaseDatum {
+  rdGovernors = ["gov1", "gov2", "gov3"],
+  rdFactor = 1000000,  -- 1.00 (neutral)
+  rdMin = 900000,      -- 0.90 (10% decrease max)
+  rdMax = 1100000      -- 1.10 (10% increase max)
+}</code></pre>
+
+      <h4>2. Initial Minting</h4>
+      <pre><code>Action: MintSome 1000000
+Validation:
+  - Governor signature ✅
+  - Amount > 0 ✅
+  - Mint matches 1,000,000 tokens ✅
+Result: 1,000,000 tokens created</code></pre>
+
+      <div class="state">⚖️ Price Stability Maintenance</div>
+
+      <h4>3. Positive Rebase (Price Too High)</h4>
+      <pre><code>Action: Rebase 1050000
+Validation:
+  - Governor signature ✅
+  - Factor 1050000 within [900000, 1100000] ✅
+Result: All balances increase by 5%
+New total supply: 1,050,000 tokens</code></pre>
+
+      <h4>4. Negative Rebase (Price Too Low)</h4>
+      <pre><code>Action: Rebase 970000
+Validation:
+  - Governor signature ✅
+  - Factor 970000 within bounds ✅
+Result: All balances decrease by 3%
+New total supply: 1,018,500 tokens</code></pre>
+
+      <h4>5. Additional Minting (Growth)</h4>
+      <pre><code>Action: MintSome 500000
+Validation:
+  - Governor signature ✅
+  - Amount > 0 ✅
+  - Mint matches 500,000 tokens ✅
+New total supply: 1,518,500 tokens</code></pre>
+
+      <h4>6. User-Initiated Burning</h4>
+      <pre><code>Action: BurnSome 100000
+Validation:
+  - Amount > 0 ✅
+  - Burn matches 100,000 tokens ✅
+Result: User reduces their holdings
+New total supply: 1,418,500 tokens</code></pre>
+
+      <h4>7. Invalid Rebase Attempt</h4>
+      <pre><code>Action: Rebase 1200000
+Validation:
+  - Governor signature ✅
+  - Factor 1200000 > rdMax 1100000 ❌
+Result: Transaction rejected - factor out of bounds</code></pre>
+
+      <h4>8. Unauthorized Mint Attempt</h4>
+      <pre><code>Action: MintSome 100000
+Validation:
+  - No governor signature ❌
+Result: Transaction rejected - not governor</code></pre>
+    </div>
+  </div>
+
+  <h2 id="10-script-compilation">10. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkPolicyUntyped</code></h3>
+  <p>Wraps the typed policy for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkPolicyUntyped #-}
+mkPolicyUntyped :: BuiltinData -> BuiltinData -> ()
+mkPolicyUntyped r c =
+    let red = unsafeFromBuiltinData @RebaseAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkPolicy red ctx then () else error ()</code></pre>
+
+  <h3><code>policy</code></h3>
+  <p>Compiles the minting policy into executable Plutus Core script:</p>
+  <pre><code>policy :: MintingPolicy
+policy = mkMintingPolicyScript $$(PlutusTx.compile [|| mkPolicyUntyped ||])</code></pre>
+
+  <h3>Currency Symbol Generation</h3>
+  <pre><code>currencySymbol :: CurrencySymbol
+currencySymbol =
+    let
+        bytes = LBS.toStrict $ Serialise.serialise policy
+        builtin = Builtins.toBuiltin bytes
+        hash = sha2_256 builtin
+    in CurrencySymbol hash</code></pre>
+
+  <h2 id="11-practical-usage">11. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the rebase policy
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+
+    writePolicy "rebase-policy.plutus" policy
+
+    let bech32 = toBech32PolicyAddress network policy
+
+    putStrLn "\n--- Rebase Token Policy ---"
+    putStrLn $ "CurrencySymbol: " <> P.show currencySymbol
+    putStrLn $ "Bech32 Script Address: " <> bech32
+    putStrLn "---------------------------------"</code></pre>
+
+  <h3>Integration with Oracle Systems</h3>
+  <pre><code>-- Example: Automated Rebase based on Price
+autoRebase :: CurrencySymbol -> Double -> Tx
+autoRebase cs currentPrice =
+    let targetPrice = 1.00  -- Stablecoin target
+        deviation = currentPrice / targetPrice
+        rebaseFactor = calculateFactor deviation
+    in if abs(deviation - 1.0) > 0.02  -- 2% threshold
+       then executeRebase cs rebaseFactor
+       else mempty  -- No action needed
+
+-- Example: Governance Operations
+executeRebase :: CurrencySymbol -> Integer -> Tx
+executeRebase cs factor = ...
+
+mintTokens :: CurrencySymbol -> Integer -> Tx
+mintTokens cs amount = ...</code></pre>
+
+  <h2 id="12-glossary">12. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Rebase</strong></td><td>Proportional adjustment of all token balances to change total supply</td></tr>
+    <tr><td><strong>Elastic Supply</strong></td><td>Token supply that automatically expands and contracts</td></tr>
+    <tr><td><strong>Rebase Factor</strong></td><td>Multiplier applied to all balances during supply adjustment</td></tr>
+    <tr><td><strong>Governor</strong></td><td>Authorized entity that can execute rebase and mint operations</td></tr>
+    <tr><td><strong>Scaled Integer</strong></td><td>Fixed-point representation using integer multiplication</td></tr>
+    <tr><td><strong>Reference Input</strong></td><td>UTxO referenced but not spent, used for state reading</td></tr>
+    <tr><td><strong>Minting Policy</strong></td><td>Script controlling token creation and destruction</td></tr>
+    <tr><td><strong>Algorithmic Stablecoin</strong></td><td>Stablecoin maintaining peg through supply adjustments</td></tr>
+    <tr><td><strong>Supply Elasticity</strong></td><td>Ability of token supply to expand and contract</td></tr>
+    <tr><td><strong>Balance Proportionality</strong></td><td>Maintaining relative holdings during supply changes</td></tr>
+    <tr><td><strong>Governance Parameters</strong></td><td>Configurable settings controlled by governors</td></tr>
+    <tr><td><strong>Bounds Protection</strong></td><td>Limits on minimum and maximum supply adjustments</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For enterprise-grade rebase tokens, consider adding:
+    <ul>
+      <li>Automated oracle integration for price feeds</li>
+      <li>Time-weighted rebase schedules</li>
+      <li>Multi-sig requirements for large adjustments</li>
+      <li>Rebase event notifications and tracking</li>
+      <li>Integration with DeFi protocols and exchanges</li>
+      <li>Advanced economic models for supply targeting</li>
+      <li>Governance voting mechanisms for parameter changes</li>
+      <li>Cross-chain compatibility for broader adoption</li>
+    </ul>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vault Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .function {
+      background: #f0f7ff;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .action {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .math-formula {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: "Cambria Math", serif;
+      text-align: center;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🏦 Vault Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Over-collateralized Vault smart contract, which implements a decentralized stablecoin lending system similar to MakerDAO's CDP (Collateralized Debt Position) mechanism. Users can lock collateral to mint stablecoins while maintaining a minimum collateralization ratio.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-redeemer-actions">🎯 Redeemer Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#7-collateral-ratio">📊 Collateral Ratio Mathematics</a></li>
+    <li><a href="#8-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#9-address-generation">🏷️ Address Generation</a></li>
+    <li><a href="#10-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#11-risk-scenarios">⚠️ Risk Scenarios</a></li>
+    <li><a href="#12-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Vault smart contract implements an over-collateralized lending system where users:</p>
+
+  <ul>
+    <li><strong>Lock collateral</strong> (ADA or other assets) into a vault</li>
+    <li><strong>Mint stablecoins</strong> against their collateral</li>
+    <li><strong>Maintain minimum collateralization ratio</strong> to avoid liquidation</li>
+    <li><strong>Repay debt</strong> to unlock collateral</li>
+  </ul>
+
+  <div class="note">
+    <strong>DeFi Concept:</strong> This implements a basic CDP (Collateralized Debt Position) mechanism similar to MakerDAO, where users can create DAI-like stablecoins by locking collateral.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>ScriptContext</code>, <code>Validator</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>findOwnInput</code>, <code>txInInfoResolved</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: Token value operations (<code>valueOf</code>, <code>adaSymbol</code>, <code>adaToken</code>, <code>geq</code>)</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>VaultDatum</code></h3>
+  <p>Stores the state of each vault position:</p>
+  <ul>
+    <li><strong>vdOwner</strong>: Public key hash of the vault owner</li>
+    <li><strong>vdColl</strong>: Amount of collateral locked (in lovelace)</li>
+    <li><strong>vdDebt</strong>: Amount of stablecoin debt minted</li>
+    <li><strong>vdMCR</strong>: Minimum Collateral Ratio (%) required to avoid liquidation</li>
+    <li><strong>vdRateIx</strong>: Interest/Stability fee index for debt calculations</li>
+  </ul>
+
+  <pre><code>data VaultDatum = VaultDatum
+    { vdOwner  :: PubKeyHash
+    , vdColl   :: Integer        -- collateral locked (in lovelace)
+    , vdDebt   :: Integer        -- stablecoin debt minted
+    , vdMCR    :: Integer        -- minimum collateral ratio in %
+    , vdRateIx :: Integer        -- interest/stability fee index
+    }</code></pre>
+
+  <h2 id="4-redeemer-actions">4. 🎯 Redeemer Actions</h2>
+
+  <h3><code>VaultAction</code></h3>
+  <p>Defines the four possible operations on a vault:</p>
+
+  <div class="action">
+    <strong>Open</strong><br>
+    Creates a new vault position. Must meet minimum collateral ratio requirements from the start.
+  </div>
+
+  <div class="action">
+    <strong>Draw amount</strong><br>
+    Mints additional stablecoins against existing collateral. Must maintain minimum collateral ratio after drawing.
+  </div>
+
+  <div class="action">
+    <strong>Repay amount</strong><br>
+    Repays stablecoin debt to reduce outstanding loan. Cannot result in negative debt.
+  </div>
+
+  <div class="danger">
+    <strong>Liquidate</strong><br>
+    Liquidates under-collateralized vaults. Only allowed when collateral ratio falls below minimum requirement.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>collateralRatio</code></h3>
+  <pre><code>{-# INLINABLE collateralRatio #-}
+collateralRatio :: VaultDatum -> Bool
+collateralRatio vd =
+    vdColl vd * 100 >= vdDebt vd * vdMCR vd</code></pre>
+  <p>Checks if the vault meets minimum collateralization requirements:</p>
+  <div class="math-formula">
+    Collateral Ratio = (Collateral × 100) ≥ (Debt × Minimum Collateral Ratio %)
+  </div>
+
+  <h3><code>scriptInputContainsCollateral</code></h3>
+  <pre><code>{-# INLINABLE scriptInputContainsCollateral #-}
+scriptInputContainsCollateral :: ScriptContext -> Integer -> Bool
+scriptInputContainsCollateral ctx required =
+    case findOwnInput ctx of
+        Nothing -> traceError "no input from script found"
+        Just i  ->
+            let v = txOutValue $ txInInfoResolved i
+            in v `geq` singleton adaSymbol adaToken required</code></pre>
+  <p>Verifies that the script UTxO contains at least the required amount of ADA collateral.</p>
+
+  <h2 id="6-core-validator-logic">6. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkVaultValidator</code></h3>
+  <p>The main validation function that enforces vault operations:</p>
+
+  <h4>Open Validation</h4>
+  <ul>
+    <li>✅ Must meet minimum collateral ratio</li>
+    <li>❌ Fails if initial collateralization is insufficient</li>
+  </ul>
+
+  <h4>Draw Validation</h4>
+  <ul>
+    <li>✅ Calculates new debt position after drawing</li>
+    <li>✅ Must maintain minimum collateral ratio after increase</li>
+    <li>❌ Fails if new debt exceeds collateral limits</li>
+  </ul>
+
+  <h4>Repay Validation</h4>
+  <ul>
+    <li>✅ Reduces outstanding debt by specified amount</li>
+    <li>✅ Ensures debt doesn't become negative</li>
+    <li>❌ Fails if repayment would create negative debt</li>
+  </ul>
+
+  <h4>Liquidate Validation</h4>
+  <ul>
+    <li>✅ Only allowed when collateral ratio is below minimum</li>
+    <li>✅ Prevents liquidation of healthy positions</li>
+    <li>❌ Fails if vault is properly collateralized</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Security Note:</strong> The current implementation uses simple integer arithmetic. In production, consider using fixed-point arithmetic for better precision in financial calculations.
+  </div>
+
+  <h2 id="7-collateral-ratio">7. 📊 Collateral Ratio Mathematics</h2>
+
+  <h3>Collateral Ratio Formula</h3>
+  <div class="math-formula">
+    Collateral Ratio = (Collateral Amount × 100) ÷ Debt Amount
+  </div>
+
+  <h3>Minimum Collateral Ratio (MCR)</h3>
+  <p>The MCR determines how much collateral must be maintained relative to debt:</p>
+  
+  <table>
+    <tr><th>MCR Value</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td>150%</td><td>For every 100 stablecoins minted, need 150 ADA collateral</td><td>Safe, conservative</td></tr>
+    <tr><td>130%</td><td>For every 100 stablecoins minted, need 130 ADA collateral</td><td>Moderate risk</td></tr>
+    <tr><td>110%</td><td>For every 100 stablecoins minted, need 110 ADA collateral</td><td>High risk</td></tr>
+  </table>
+
+  <h3>Example Calculation</h3>
+  <pre><code>VaultDatum:
+  vdColl = 1000 ADA (1,000,000,000 lovelace)
+  vdDebt = 500 stablecoins
+  vdMCR  = 150%
+
+Collateral Ratio Check:
+  1,000,000,000 * 100 >= 500 * 150
+  100,000,000,000 >= 75,000 ✅
+  
+Vault is healthy and above minimum requirement</code></pre>
+
+  <h2 id="8-script-compilation">8. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkVaultValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkVaultValidatorUntyped #-}
+mkVaultValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkVaultValidatorUntyped d r c =
+    let vd  = unsafeFromBuiltinData @VaultDatum d
+        act = unsafeFromBuiltinData @VaultAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkVaultValidator vd act ctx then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkVaultValidatorUntyped ||])</code></pre>
+
+  <h2 id="9-address-generation">9. 🏷️ Address Generation</h2>
+
+  <h3><code>plutusValidatorHash</code></h3>
+  <p>Generates the validator hash from the compiled script using serialization.</p>
+
+  <h3><code>plutusScriptAddress</code></h3>
+  <p>Creates the script address for on-chain deployment.</p>
+
+  <h3><code>toBech32ScriptAddress</code></h3>
+  <p>Converts the script address to Bech32 format for human-readable addresses.</p>
+
+  <h2 id="10-practical-usage">10. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the vault validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+    
+    -- Save validator to file
+    writeValidator "vault.plutus" validator
+    
+    -- Generate addresses and hashes
+    let vh      = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32  = toBech32ScriptAddress network validator
+    
+    -- Output deployment information
+    putStrLn "\n--- Vault Validator Info ---"
+    putStrLn $ "Validator Hash (Plutus): " <> P.show vh
+    putStrLn $ "Plutus Script Address:    " <> P.show onchain
+    putStrLn $ "Bech32 Script Address:    " <> bech32
+    putStrLn "---------------------------------"</code></pre>
+
+  <h3>Example Vault Lifecycle</h3>
+
+  <h4>1. Opening a Vault</h4>
+  <pre><code>-- User locks 1000 ADA, wants to mint 500 stablecoins with 150% MCR
+VaultDatum {
+  vdOwner = "user_pkh",
+  vdColl = 1000000000,  -- 1000 ADA in lovelace
+  vdDebt = 500,
+  vdMCR = 150,
+  vdRateIx = 1
+}</code></pre>
+
+  <h4>2. Drawing Additional Stablecoins</h4>
+  <pre><code>-- User draws 100 more stablecoins (new debt = 600)
+-- Validator checks: 1000 * 100 >= 600 * 150 → 100000 >= 90000 ✅</code></pre>
+
+  <h4>3. Partial Repayment</h4>
+  <pre><code>-- User repays 200 stablecoins (new debt = 400)
+-- Validator ensures debt doesn't go negative</code></pre>
+
+  <h4>4. Liquidation Scenario</h4>
+  <pre><code>-- If collateral value drops to 500 ADA
+-- Collateral ratio: 500 * 100 >= 400 * 150 → 50000 >= 60000 ❌
+-- Vault becomes under-collateralized and can be liquidated</code></pre>
+
+  <h2 id="11-risk-scenarios">11. ⚠️ Risk Scenarios</h2>
+
+  <h3>Market Risk</h3>
+  <ul>
+    <li><strong>Collateral Value Drop</strong>: ADA price decline can trigger liquidations</li>
+    <li><strong>Volatility</strong>: Rapid price movements may prevent timely adjustments</li>
+  </ul>
+
+  <h3>Technical Risk</h3>
+  <ul>
+    <li><strong>Oracle Risk</strong>: Price feeds for collateral valuation</li>
+    <li><strong>Liquidation Timing</strong>: Network congestion affecting liquidation transactions</li>
+    <li><strong>Interest Rate Risk</strong>: Stability fee accumulation</li>
+  </ul>
+
+  <h3>Mitigation Strategies</h3>
+  <ul>
+    <li>Use conservative minimum collateral ratios (150%+)</li>
+    <li>Implement price oracle with multiple data sources</li>
+    <li>Add liquidation penalties and incentives</li>
+    <li>Include grace periods for margin calls</li>
+  </ul>
+
+  <h2 id="12-glossary">12. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Vault/CDP</strong></td><td>Collateralized Debt Position - locked collateral that backs minted stablecoins</td></tr>
+    <tr><td><strong>Collateral</strong></td><td>Assets locked in the vault to secure the stablecoin debt</td></tr>
+    <tr><td><strong>Debt</strong></td><td>Amount of stablecoins minted against the collateral</td></tr>
+    <tr><td><strong>Collateral Ratio</strong></td><td>Ratio of collateral value to debt value, expressed as percentage</td></tr>
+    <tr><td><strong>Minimum Collateral Ratio (MCR)</strong></td><td>Lowest allowed collateral ratio before liquidation</td></tr>
+    <tr><td><strong>Liquidation</strong></td><td>Process of seizing and selling under-collateralized vaults</td></tr>
+    <tr><td><strong>Stablecoin</strong></td><td>Price-stable cryptocurrency minted against collateral</td></tr>
+    <tr><td><strong>Draw</strong></td><td>Action of minting additional stablecoins against existing collateral</td></tr>
+    <tr><td><strong>Repay</strong></td><td>Action of burning stablecoins to reduce debt</td></tr>
+    <tr><td><strong>Interest Rate Index</strong></td><td>Accumulated stability fees affecting the total debt</td></tr>
+    <tr><td><strong>Over-collateralization</strong></td><td>Having more collateral value than the debt value</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For real-world deployment, consider adding:
+    <ul>
+      <li>Price oracles for dynamic collateral valuation</li>
+      <li>Liquidation auctions with bidding mechanisms</li>
+      <li>Stability fee accumulation and compounding</li>
+      <li>Governance mechanisms for parameter adjustments</li>
+      <li>Insurance funds for under-collateralized positions</li>
+      <li>Multi-collateral support for different asset types</li>
+    </ul>
+  </div>
+
+</body>
+</html>
