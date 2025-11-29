@@ -1,0 +1,395 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Attendance — Frontend UI (Plutus V2)</title>
+<style>
+  /* ===== Design tokens & fluid type ===== */
+  :root{
+    --bg:#ffffff;--panel:#f7f9fc;--muted:#6b7280;--text:#1f2937;--accent:#2563eb;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--border:#e5e7eb;
+    --radius:14px;
+    --space:clamp(10px, 2vw, 16px);
+    --font: clamp(14px, 1.1vw + 12px, 16px);
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b0f17;--panel:#0f172a;--text:#e5e7eb;--border:#1f2836;--muted:#9aa4b2; }
+  }
+
+  /* ===== Base ===== */
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:var(--font)/1.6 var(--sans)}
+  .wrap{max-width:1200px;margin:0 auto;padding:calc(var(--space)*1.5) var(--space)}
+  header{display:flex;gap:var(--space);align-items:center;justify-content:space-between;margin-bottom:var(--space)}
+  .title{display:flex;gap:.6rem;align-items:center;font-weight:800;flex-wrap:wrap}
+  .badge{display:inline-flex;gap:.5rem;align-items:center;background:linear-gradient(135deg,#60a5fa,#a78bfa);padding:.35rem .7rem;border-radius:999px;color:#0b1020;font-weight:800}
+  .muted{color:var(--muted);font-weight:600}
+  .grid{display:grid;gap:var(--space);grid-template-columns: 1fr}
+  @media(min-width: 880px){ .grid{grid-template-columns: minmax(320px, 420px) 1fr} }
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space)}
+  h2{margin:.25rem 0 .6rem;font-size:clamp(1.05rem, 1.6vw, 1.2rem)}
+  h3{margin:.6rem 0 .4rem;font-size:clamp(1rem, 1.4vw, 1.05rem)}
+  label{font-size:.92em;color:var(--muted)}
+  input[type="text"], input[type="number"], textarea, select{
+    width:100%;padding:.65rem .75rem;border:1px solid var(--border);border-radius:10px;background:#fff;color:#111827;font:inherit
+  }
+  @media (prefers-color-scheme: dark){
+    input,textarea,select{background:#0b1220;color:var(--text)}
+  }
+
+  .row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .row>.grow{flex:1}
+  .divider{height:1px;background:var(--border);margin:.7rem 0}
+
+  /* ===== Buttons ===== */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+    border:1px solid var(--border);background:#fff;color:#111827;border-radius:10px;
+    padding:.55rem .9rem;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04);font-weight:700
+  }
+  .btn:hover{background:#f6f7fb}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.ok{background:var(--ok);color:#fff;border-color:transparent}
+  .btn.warn{background:var(--warn);color:#fff;border-color:transparent}
+  .btn.err{background:var(--err);color:#fff;border-color:transparent}
+
+  .toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .tool-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:clamp(36px, 6vw, 40px);height:clamp(36px, 6vw, 40px);
+    border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:clamp(16px, 3.5vw, 18px);
+    box-shadow:0 1px 2px rgba(0,0,0,.04)
+  }
+  .tool-btn:hover{background:#f6f7fb}
+
+  /* ===== Pills & code ===== */
+  .pill{display:inline-flex;gap:.35rem;align-items:center;border:1px solid var(--border);border-radius:999px;padding:.25rem .6rem;background:#fff}
+  pre{background:#0f172a;color:#e5e7eb;border-radius:12px;padding:12px;overflow:auto;border:1px solid #1f2836;-webkit-overflow-scrolling:touch}
+  code{font-family:var(--mono);font-size:clamp(12px, 1.1vw + 10px, 14px)}
+  #logs{min-height:80px;max-height:220px}
+
+  footer{margin:calc(var(--space)*1.2) 0 .5rem;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <span class="badge">📅 Attendance UI</span>
+      <span class="muted">Admin mark • User claim • Tranche rewards</span>
+    </div>
+    <div class="toolbar">
+      <button class="tool-btn" title="Download Datum" onclick="downloadDatum('AttendanceDatum.json')">⬇️</button>
+      <button class="tool-btn" title="Copy Datum" onclick="copyDatum()">📋</button>
+      <button class="tool-btn" title="Clear Logs" onclick="clearLogs()">🧹</button>
+      <button class="tool-btn" title="Refresh" onclick="refreshPage()">🔄</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Left: Params, Datum, Actions -->
+    <aside class="panel">
+      <h2>1) Parameters (AttendanceParams)</h2>
+      <div class="row">
+        <div class="grow">
+          <label>apOracleAdmin (PubKeyHash)</label>
+          <input id="apOracleAdmin" type="text" value="admin-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>apTrancheSizeDays (Integer)</label>
+          <input id="apTrancheSizeDays" type="number" min="1" value="5" />
+        </div>
+        <div class="grow">
+          <label>apRewardPerTranche (Integer)</label>
+          <input id="apRewardPerTranche" type="number" min="1" value="10" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>apRewardAsset (AssetClass: CS.TokenName)</label>
+          <input id="apRewardAsset" type="text" value="policyABC.rewardTOK" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.6rem;">
+        <button class="btn ok grow" onclick="applyParams()">Apply Params</button>
+        <button class="btn grow" onclick="resetParams()">Reset</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>2) Datum (AttendanceDatum)</h2>
+      <div class="row">
+        <div class="grow">
+          <label>adUserAddress (PubKeyHash)</label>
+          <input id="adUserAddress" type="text" value="user-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>adTotalDays (Integer)</label>
+          <input id="adTotalDays" type="number" min="0" value="0" />
+        </div>
+        <div class="grow">
+          <label>adTrancheLevel (Integer)</label>
+          <input id="adTrancheLevel" type="number" min="0" value="0" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>3) Actions</h2>
+      <div class="row">
+        <div class="grow">
+          <label>Admin Signer (for MarkAttendance)</label>
+          <input id="adminSigner" type="text" placeholder="apOracleAdmin" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn primary grow" onclick="markAttendance()">Mark Attendance (+1 day)</button>
+      </div>
+
+      <div class="row" style="margin-top:1rem;">
+        <div class="grow">
+          <label>User Signer (for ClaimTranche)</label>
+          <input id="userSigner" type="text" placeholder="adUserAddress" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn warn grow" onclick="claimTranche()">Claim Tranche(s)</button>
+      </div>
+
+      <p class="muted" style="font-size:.9em;margin:.6rem 0 0">
+        Rules mirror on-chain: admin-only mark (same script & value), user-only claim (must have new eligible tranches, value decreased by payout).
+      </p>
+    </aside>
+
+    <!-- Right: Snapshots & Logs -->
+    <main>
+      <div class="panel">
+        <h2>Params Snapshot</h2>
+        <pre><code id="params-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Datum Snapshot</h2>
+        <pre><code id="datum-block">{}</code></pre>
+        <div class="row" style="margin-top:.6rem;flex-wrap:wrap;">
+          <button class="btn" onclick="downloadDatum('AttendanceDatum.json')">⬇️ Download</button>
+          <button class="btn" onclick="copyDatum()">📋 Copy</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Tx Payload (for off-chain)</h2>
+        <pre><code id="tx-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Math & Checks</h2>
+        <pre><code id="math-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Logs</h2>
+        <pre id="logs" aria-live="polite"></pre>
+      </div>
+    </main>
+  </div>
+
+  <footer>Responsive Attendance validator demo — no chain connection, pure UI logic. 💙</footer>
+</div>
+
+<script>
+  // ===== Utility =====
+  const el = sel => document.querySelector(sel);
+  const log = msg => { const l = el('#logs'); l.textContent += msg + '\\n'; l.scrollTop = l.scrollHeight; };
+
+  // ===== State mirrors on-chain types =====
+  let params = {
+    apOracleAdmin: 'admin-0001',
+    apTrancheSizeDays: 5,
+    apRewardAsset: 'policyABC.rewardTOK', // UI-friendly "CS.TN"
+    apRewardPerTranche: 10
+  };
+  let datum = {
+    adUserAddress: 'user-0001',
+    adTotalDays: 0,
+    adTrancheLevel: 0
+  };
+
+  // ===== Renderers =====
+  function renderParams(){
+    el('#params-block').textContent = JSON.stringify(params, null, 2);
+  }
+  function renderDatum(){
+    el('#datum-block').textContent = JSON.stringify(datum, null, 2);
+  }
+  function renderTxPayload(obj){ el('#tx-block').textContent = JSON.stringify(obj, null, 2); }
+  function renderMath(obj){ el('#math-block').textContent = JSON.stringify(obj, null, 2); }
+
+  // ===== Toolbar (Datum) =====
+  function getDatumText(){ return el('#datum-block').textContent || '{}'; }
+  function downloadDatum(filename='AttendanceDatum.json'){
+    const text = getDatumText();
+    const blob = new Blob([text], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  async function copyDatum(){
+    const text = getDatumText();
+    try{
+      if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+      else { const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      log('📋 Datum copied to clipboard.');
+    }catch(e){ alert('Copy failed: '+e.message); }
+  }
+  function clearLogs(){ el('#logs').textContent = ''; }
+  function refreshPage(){ window.location.reload(); }
+
+  // ===== Apply/Reset Params & Datum =====
+  function applyParams(){
+    params.apOracleAdmin     = el('#apOracleAdmin').value.trim() || params.apOracleAdmin;
+    params.apTrancheSizeDays = Math.max(1, parseInt(el('#apTrancheSizeDays').value || params.apTrancheSizeDays, 10));
+    params.apRewardPerTranche= Math.max(1, parseInt(el('#apRewardPerTranche').value || params.apRewardPerTranche, 10));
+    params.apRewardAsset     = el('#apRewardAsset').value.trim() || params.apRewardAsset;
+    renderParams();
+    renderTxPayload({ type:'ParamsApplied', params });
+    log('✅ Params applied.');
+  }
+  function resetParams(){
+    params = { apOracleAdmin:'admin-0001', apTrancheSizeDays:5, apRewardAsset:'policyABC.rewardTOK', apRewardPerTranche:10 };
+    el('#apOracleAdmin').value = params.apOracleAdmin;
+    el('#apTrancheSizeDays').value = params.apTrancheSizeDays;
+    el('#apRewardPerTranche').value = params.apRewardPerTranche;
+    el('#apRewardAsset').value = params.apRewardAsset;
+    renderParams();
+    renderTxPayload({ type:'ParamsReset', params });
+    log('Params reset to defaults.');
+  }
+
+  function syncDatumFromInputs(){
+    datum.adUserAddress = el('#adUserAddress').value.trim() || datum.adUserAddress;
+    datum.adTotalDays   = Math.max(0, parseInt(el('#adTotalDays').value || datum.adTotalDays, 10));
+    datum.adTrancheLevel= Math.max(0, parseInt(el('#adTrancheLevel').value || datum.adTrancheLevel, 10));
+  }
+
+  // ===== Math helpers (mirror on-chain) =====
+  function eligibleTranches(totalDays, trancheSize){
+    if(trancheSize <= 0) { throw new Error('bad tranche size'); }
+    // integer division like Plutus `divide`
+    return Math.floor(totalDays / trancheSize);
+  }
+
+  // ===== Actions =====
+  // 1) MarkAttendance (admin)
+  function markAttendance(){
+    syncDatumFromInputs();
+    const signer = el('#adminSigner').value.trim();
+    if(!signer){ alert('Provide admin signer'); return; }
+    // admin signature check
+    if(signer !== params.apOracleAdmin){ log('❌ admin signature missing'); return; }
+
+    // sameScript & value equality checks are ledger-side; we emulate intent
+    const updated = {
+      adUserAddress: datum.adUserAddress,
+      adTotalDays: datum.adTotalDays + 1,
+      adTrancheLevel: datum.adTrancheLevel
+    };
+
+    datum = updated;
+    el('#adTotalDays').value = datum.adTotalDays;
+    el('#adTrancheLevel').value = datum.adTrancheLevel;
+    renderDatum();
+
+    renderTxPayload({
+      type:'MarkAttendance',
+      signer,
+      updatedDatum: updated,
+      sameScript:true,
+      valueUnchanged:true
+    });
+
+    renderMath({
+      trancheSize: params.apTrancheSizeDays,
+      eligibleBefore: eligibleTranches(datum.adTotalDays - 1, params.apTrancheSizeDays),
+      eligibleAfter: eligibleTranches(datum.adTotalDays, params.apTrancheSizeDays)
+    });
+
+    log('✅ MarkAttendance accepted (+1 day).');
+  }
+
+  // 2) ClaimTranche (user)
+  function claimTranche(){
+    syncDatumFromInputs();
+    const signer = el('#userSigner').value.trim();
+    if(!signer){ alert('Provide user signer'); return; }
+    if(signer !== datum.adUserAddress){ log('❌ user signature missing'); return; }
+
+    const trancheSize = params.apTrancheSizeDays;
+    if(trancheSize <= 0){ log('❌ bad tranche size'); return; }
+
+    const already = datum.adTrancheLevel;
+    const eligAll = eligibleTranches(datum.adTotalDays, trancheSize);
+    const newLevel = eligAll;          // claim up to max eligible
+    const newClaimed = newLevel - already;
+
+    if(newClaimed <= 0){ log('❌ no new tranche'); return; }
+
+    const expectedPayoutUnits = newClaimed * params.apRewardPerTranche;
+
+    // Update datum: days unchanged; tranche level set to newLevel
+    const updated = {
+      adUserAddress: datum.adUserAddress,
+      adTotalDays: datum.adTotalDays,
+      adTrancheLevel: newLevel
+    };
+    datum = updated;
+    el('#adTotalDays').value = datum.adTotalDays;
+    el('#adTrancheLevel').value = datum.adTrancheLevel;
+    renderDatum();
+
+    // Value check (ledger): out = in - payout (we show the delta)
+    const math = {
+      trancheSize,
+      already,
+      eligAll,
+      newLevel,
+      newClaimed,
+      expectedPayoutUnits,
+      rewardAsset: params.apRewardAsset
+    };
+    renderMath(math);
+
+    renderTxPayload({
+      type:'ClaimTranche',
+      signer,
+      updatedDatum: updated,
+      payout: {
+        asset: params.apRewardAsset,
+        units: expectedPayoutUnits
+      },
+      sameScript:true,
+      valueDelta:`- ${expectedPayoutUnits} ${params.apRewardAsset}`
+    });
+
+    log(`✅ ClaimTranche accepted: ${newClaimed} tranche(s), payout ${expectedPayoutUnits} of ${params.apRewardAsset}.`);
+  }
+
+  // ===== Boot =====
+  (function boot(){
+    renderParams();
+    renderDatum();
+  })();
+</script>
+</body>
+</html>
+```
+
+Want me to switch the **AssetClass** input to separate `policyId` and `tokenName` fields, or add a tiny emulator table for historical marks/claims?

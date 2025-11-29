@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🗳️ Tutorial: Voting.hs Deep Dive</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 0; padding: 2px; line-height: 1.6; background: #fff; color: #222; }
+    h1, h2, h3 { color: #002b45; }
+    pre { background: #f0f0f0; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    code { font-family: monospace; background: #fdfdfd; padding: 2px 4px; border-radius: 4px; color: #c7254e; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    table, th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f0f8ff; color: #002b45; }
+    a { color: #0077cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<h1>🗳️ Tutorial: Understanding and Using <code>Voting.hs</code></h1>
+<p>This tutorial walks you through a parameterized Plutus V2 voting validator. You’ll learn how the types, rules, and wrapper fit together to support single‑signer ballots, tally updates, and admin‑controlled closing.</p>
+
+<h2>📑 Table of Contents</h2>
+<ol>
+  <li><a href="#1-language-extensions">⚙️ Language Extensions</a></li>
+  <li><a href="#2-imports">📦 Module Imports</a></li>
+  <li><a href="#3-types">🧱 On‑Chain Types</a></li>
+  <li><a href="#4-logic">🛡️ Core Validator Logic</a></li>
+  <li><a href="#5-wrapper">🎁 Untyped Wrapper</a></li>
+  <li><a href="#6-compilation">💾 Compilation to <code>Validator</code></a></li>
+  <li><a href="#7-usage">🚀 Instantiate &amp; Use</a></li>
+  <li><a href="#8-troubleshoot">🧭 Troubleshooting &amp; Tips</a></li>
+  <li><a href="#9-glossary">📘 Glossary</a></li>
+  <li><a href="#A-code">📎 Appendix: Full Module</a></li>
+</ol>
+
+<h2 id="1-language-extensions">1. ⚙️ Language Extensions</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+</code></pre>
+<ul>
+  <li><strong>DataKinds</strong>: enables promoted tags required by ledger types.</li>
+  <li><strong>NoImplicitPrelude</strong>: use <code>PlutusTx.Prelude</code> functions on-chain.</li>
+  <li><strong>TemplateHaskell</strong>: compile and specialize the validator.</li>
+</ul>
+
+<h2 id="2-imports">2. 📦 Module Imports</h2>
+<pre><code>import PlutusTx
+import PlutusTx.Prelude hiding (Semigroup(..), unless)
+import Plutus.V2.Ledger.Api
+import Plutus.V2.Ledger.Contexts
+import Prelude (IO)
+</code></pre>
+<ul>
+  <li><code>Plutus.V2.Ledger.Contexts</code>: signers, inputs, continuing outputs.</li>
+  <li><code>Plutus.V2.Ledger.Api</code>: core types (<code>Validator</code>, <code>Datum</code>, <code>TxOut</code>, etc.).</li>
+</ul>
+
+<h2 id="3-types">3. 🧱 On‑Chain Types</h2>
+
+<h3>3.1 <code>VotingParams</code></h3>
+<pre><code>data VotingParams = VotingParams { vpAdmin :: PubKeyHash }
+PlutusTx.unstableMakeIsData ''VotingParams
+PlutusTx.makeLift        ''VotingParams
+</code></pre>
+<p>The admin key must sign the <em>Close</em> action.</p>
+
+<h3>3.2 <code>VoteDatum</code> &amp; <code>VoteAction</code></h3>
+<pre><code>type Candidate = BuiltinByteString
+
+data VoteDatum = VoteDatum
+  { vdOpen    :: Bool
+  , vdVoters  :: [PubKeyHash]
+  , vdTallies :: [(Candidate, Integer)]
+  }
+PlutusTx.unstableMakeIsData ''VoteDatum
+
+data VoteAction = Vote Candidate | Close
+PlutusTx.unstableMakeIsData ''VoteAction
+</code></pre>
+<ul>
+  <li><strong>vdOpen</strong>: voting is open only if <code>True</code>.</li>
+  <li><strong>vdVoters</strong>: prevents duplicate ballots by recording PKHs.</li>
+  <li><strong>vdTallies</strong>: per‑candidate counters.</li>
+</ul>
+
+<h2 id="4-logic">4. 🛡️ Core Validator Logic</h2>
+
+<h3>4.1 Helpers</h3>
+<pre><code>{-# INLINABLE getSingleSigner #-}
+getSingleSigner :: TxInfo -> Maybe PubKeyHash
+getSingleSigner info = case txInfoSignatories info of
+  [pkh] -> Just pkh
+  _     -> Nothing
+
+{-# INLINABLE hasVoted #-}
+hasVoted :: PubKeyHash -> [PubKeyHash] -> Bool
+hasVoted p = any (\q -> q == p)
+
+{-# INLINABLE incTally #-}
+incTally :: Candidate -> [(Candidate, Integer)] -> [(Candidate, Integer)]
+incTally c [] = [(c, 1)]
+incTally c ((c', n):xs)
+  | c == c'   = (c, n + 1) : xs
+  | otherwise = (c', n)    : incTally c xs
+
+{-# INLINABLE valuePreserved #-}
+valuePreserved :: TxOut -> TxOut -> Bool
+valuePreserved inp out = txOutValue inp == txOutValue out
+
+{-# INLINABLE ownInput #-}
+ownInput :: ScriptContext -> TxOut
+ownInput ctx = maybe (traceError "own input not found") txInInfoResolved (findOwnInput ctx)
+
+{-# INLINABLE continuingOutputs #-}
+continuingOutputs :: ScriptContext -> [TxOut]
+continuingOutputs = getContinuingOutputs
+
+{-# INLINABLE outputDatumInline #-}
+outputDatumInline :: TxOut -> Datum
+outputDatumInline o = case txOutDatum o of
+  OutputDatum d     -> d
+  OutputDatumHash _ -> traceError "expected inline datum"
+  NoOutputDatum     -> traceError "no datum"
+
+{-# INLINABLE decodeDatum #-}
+decodeDatum :: Datum -> VoteDatum
+decodeDatum (Datum d) = unsafeFromBuiltinData d
+</code></pre>
+
+<h3>4.2 Validator</h3>
+<pre><code>{-# INLINABLE mkValidator #-}
+mkValidator :: VotingParams -> VoteDatum -> VoteAction -> ScriptContext -> Bool
+mkValidator params datum redeemer ctx = case redeemer of
+  Vote candidate ->
+       traceIfFalse "voting closed"          (vdOpen datum)
+    && traceIfFalse "need single signer"     (isJust signerM)
+    && traceIfFalse "already voted"          (maybe False (\s -> not (hasVoted s (vdVoters datum))) signerM)
+    && traceIfFalse "exactly one cont. out"  (length contOuts == 1)
+    && traceIfFalse "value changed"          (valuePreserved inRef (head contOuts))
+    && traceIfFalse "bad updated datum"      (checkUpdated datum (head contOuts) signerM candidate)
+  Close ->
+       traceIfFalse "not admin"              (txSignedBy info (vpAdmin params))
+    && traceIfFalse "no continuing outputs"  (null contOuts)
+  where
+    info     = scriptContextTxInfo ctx
+    signerM  = getSingleSigner info
+    inRef    = ownInput ctx
+    contOuts = continuingOutputs ctx
+
+    {-# INLINABLE checkUpdated #-}
+    checkUpdated :: VoteDatum -> TxOut -> Maybe PubKeyHash -> Candidate -> Bool
+    checkUpdated d out mSigner cand =
+      let d' = decodeDatum (outputDatumInline out)
+      in case mSigner of
+        Nothing -> False
+        Just s  -> vdOpen d' && vdVoters d' == (s : vdVoters d) && vdTallies d' == incTally cand (vdTallies d)
+</code></pre>
+
+<h2 id="5-wrapper">5. 🎁 Untyped Wrapper</h2>
+<pre><code>{-# INLINABLE mkUntyped #-}
+mkUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkUntyped p d r c =
+  let params = unsafeFromBuiltinData p
+      datum  = unsafeFromBuiltinData d
+      red    = unsafeFromBuiltinData r
+      ctx    = unsafeFromBuiltinData c
+  in  check (mkValidator params datum red ctx)
+  where
+    check True  = ()
+    check False = traceError "validation failed"
+</code></pre>
+
+<h2 id="6-compilation">6. 💾 Compilation to <code>Validator</code></h2>
+<pre><code>validator :: VotingParams -> Validator
+validator params =
+  mkValidatorScript (
+    $$(PlutusTx.compile [|| \ps -> mkUntyped ps ||]) `PlutusTx.applyCode` PlutusTx.liftCode params
+  )
+
+validatorHash' :: VotingParams -> ValidatorHash
+validatorHash' = validatorHash . validator
+
+validatorAddress :: VotingParams -> Address
+validatorAddress ps = Address (ScriptCredential (validatorHash' ps)) Nothing
+</code></pre>
+<ul>
+  <li><code>compile</code> + <code>applyCode</code>: turns the typed function into a concrete script with parameters applied.</li>
+  <li><code>validatorAddress</code>: derive the script address to lock funds and datums.</li>
+</ul>
+
+<h2 id="7-usage">7. 🚀 Instantiate &amp; Use</h2>
+<ol>
+  <li><strong>Params:</strong> choose <code>vpAdmin</code>.</li>
+  <li><strong>Initial datum:</strong> <code>VoteDatum True [] []</code>.</li>
+  <li><strong>Vote:</strong> exactly one signer, preserve value, produce one continuing output with updated inline datum.</li>
+  <li><strong>Close:</strong> signed by admin, no continuing outputs (hard close).</li>
+</ol>
+
+<h2 id="8-troubleshoot">8. 🧭 Troubleshooting &amp; Tips</h2>
+<table>
+  <thead><tr><th>Trace</th><th>Why</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td><code>voting closed</code></td><td><code>vdOpen == False</code></td><td>Reopen via datum or restart vote</td></tr>
+    <tr><td><code>need single signer</code></td><td>0 or &gt;1 signers</td><td>Ensure exactly one signer</td></tr>
+    <tr><td><code>already voted</code></td><td>Signer in <code>vdVoters</code></td><td>Prevent duplicate ballots</td></tr>
+    <tr><td><code>exactly one cont. out</code></td><td>Wrong # of continuing outs</td><td>Produce exactly one</td></tr>
+    <tr><td><code>value changed</code></td><td>Value siphoning attempt</td><td>Keep input/output value equal</td></tr>
+    <tr><td><code>bad updated datum</code></td><td>Wrong inline datum content</td><td>Append signer, inc candidate tally</td></tr>
+    <tr><td><code>not admin</code></td><td>Close w/out admin signature</td><td>Sign with <code>vpAdmin</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="9-glossary">9. 📘 Glossary</h2>
+<table>
+  <thead>
+    <tr><th>🔹 Term</th><th>💬 Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>Inline Datum</code></td><td>Datum embedded directly in the TxOut</td></tr>
+    <tr><td><code>Continuing Output</code></td><td>Output back to the script with updated state</td></tr>
+    <tr><td><code>Value Preservation</code></td><td>Input and continuing output values must match</td></tr>
+    <tr><td><code>Single‑signer Vote</code></td><td>Exactly one <code>txInfoSignatories</code> entry</td></tr>
+  </tbody>
+</table>
+
+<h2 id="A-code">📎 Appendix: Full Module</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+
+module Voting where
+
+import PlutusTx
+import PlutusTx.Prelude hiding (Semigroup(..), unless)
+import Plutus.V2.Ledger.Api
+import Plutus.V2.Ledger.Contexts
+import Prelude (IO)
+
+-- PARAMETERS
+
+data VotingParams = VotingParams { vpAdmin :: PubKeyHash }
+PlutusTx.unstableMakeIsData ''VotingParams
+PlutusTx.makeLift        ''VotingParams
+
+-- DATUM & REDEEMER
+
+type Candidate = BuiltinByteString
+
+data VoteDatum = VoteDatum
+  { vdOpen    :: Bool
+  , vdVoters  :: [PubKeyHash]
+  , vdTallies :: [(Candidate, Integer)]
+  }
+PlutusTx.unstableMakeIsData ''VoteDatum
+
+data VoteAction = Vote Candidate | Close
+PlutusTx.unstableMakeIsData ''VoteAction
+
+-- UTILITIES
+
+{-# INLINABLE getSingleSigner #-}
+getSingleSigner :: TxInfo -> Maybe PubKeyHash
+getSingleSigner info = case txInfoSignatories info of
+  [pkh] -> Just pkh
+  _     -> Nothing
+
+{-# INLINABLE hasVoted #-}
+hasVoted :: PubKeyHash -> [PubKeyHash] -> Bool
+hasVoted p = any (\q -> q == p)
+
+{-# INLINABLE incTally #-}
+incTally :: Candidate -> [(Candidate, Integer)] -> [(Candidate, Integer)]
+incTally c [] = [(c, 1)]
+incTally c ((c', n):xs)
+  | c == c'   = (c, n + 1) : xs
+  | otherwise = (c', n)    : incTally c xs
+
+{-# INLINABLE valuePreserved #-}
+valuePreserved :: TxOut -> TxOut -> Bool
+valuePreserved inp out = txOutValue inp == txOutValue out
+
+{-# INLINABLE ownInput #-}
+ownInput :: ScriptContext -> TxOut
+ownInput ctx = case findOwnInput ctx of
+  Just i  -> txInInfoResolved i
+  Nothing -> traceError "own input not found"
+
+{-# INLINABLE continuingOutputs #-}
+continuingOutputs :: ScriptContext -> [TxOut]
+continuingOutputs = getContinuingOutputs
+
+{-# INLINABLE outputDatumInline #-}
+outputDatumInline :: TxOut -> Datum
+outputDatumInline o = case txOutDatum o of
+  OutputDatum d     -> d
+  OutputDatumHash _ -> traceError "expected inline datum"
+  NoOutputDatum     -> traceError "no datum"
+
+{-# INLINABLE decodeDatum #-}
+decodeDatum :: Datum -> VoteDatum
+decodeDatum (Datum d) = unsafeFromBuiltinData d
+
+-- VALIDATOR
+
+{-# INLINABLE mkValidator #-}
+mkValidator :: VotingParams -> VoteDatum -> VoteAction -> ScriptContext -> Bool
+mkValidator params datum redeemer ctx = case redeemer of
+  Vote candidate ->
+       traceIfFalse "voting closed"          (vdOpen datum)
+    && traceIfFalse "need single signer"     (isJust signerM)
+    && traceIfFalse "already voted"          (maybe False (\s -> not (hasVoted s (vdVoters datum))) signerM)
+    && traceIfFalse "exactly one cont. out"  (length contOuts == 1)
+    && traceIfFalse "value changed"          (valuePreserved inRef (head contOuts))
+    && traceIfFalse "bad updated datum"      (checkUpdated datum (head contOuts) signerM candidate)
+  Close ->
+       traceIfFalse "not admin"              (txSignedBy info (vpAdmin params))
+    && traceIfFalse "no continuing outputs"  (null contOuts)
+  where
+    info     = scriptContextTxInfo ctx
+    signerM  = getSingleSigner info
+    inRef    = ownInput ctx
+    contOuts = continuingOutputs ctx
+
+    {-# INLINABLE checkUpdated #-}
+    checkUpdated :: VoteDatum -> TxOut -> Maybe PubKeyHash -> Candidate -> Bool
+    checkUpdated d out mSigner cand =
+      let d' = decodeDatum (outputDatumInline out)
+      in case mSigner of
+        Nothing -> False
+        Just s  -> vdOpen d' && vdVoters d' == (s : vdVoters d) && vdTallies d' == incTally cand (vdTallies d)
+
+-- UNTYPED & COMPILED
+
+{-# INLINABLE mkUntyped #-}
+mkUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkUntyped p d r c =
+  let params = unsafeFromBuiltinData p
+      datum  = unsafeFromBuiltinData d
+      red    = unsafeFromBuiltinData r
+      ctx    = unsafeFromBuiltinData c
+  in  check (mkValidator params datum red ctx)
+  where
+    check True  = ()
+    check False = traceError "validation failed"
+
+validator :: VotingParams -> Validator
+validator params =
+  mkValidatorScript (
+    $$(PlutusTx.compile [|| \ps -> mkUntyped ps ||]) `PlutusTx.applyCode` PlutusTx.liftCode params
+  )
+
+validatorHash' :: VotingParams -> ValidatorHash
+validatorHash' = validatorHash . validator
+
+validatorAddress :: VotingParams -> Address
+validatorAddress ps = Address (ScriptCredential (validatorHash' ps)) Nothing
+</code></pre>
+
+</body>
+</html>

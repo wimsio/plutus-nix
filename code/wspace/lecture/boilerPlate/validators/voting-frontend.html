@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Voting — Frontend UI (Plutus V2)</title>
+<style>
+  /* ===== Design tokens & fluid type ===== */
+  :root{
+    --bg:#ffffff;--panel:#f7f9fc;--muted:#6b7280;--text:#1f2937;--accent:#2563eb;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--border:#e5e7eb;
+    --radius:14px;
+    --space:clamp(10px, 2vw, 16px);
+    --font: clamp(14px, 1.1vw + 12px, 16px);
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b0f17;--panel:#0f172a;--text:#e5e7eb;--border:#1f2836;--muted:#9aa4b2; }
+  }
+
+  /* ===== Base ===== */
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:var(--font)/1.6 var(--sans)}
+  .wrap{max-width:1100px;margin:0 auto;padding:calc(var(--space)*1.5) var(--space)}
+  header{display:flex;gap:var(--space);align-items:center;justify-content:space-between;margin-bottom:var(--space)}
+  .title{display:flex;gap:.6rem;align-items:center;font-weight:800;flex-wrap:wrap}
+  .badge{display:inline-flex;gap:.5rem;align-items:center;background:linear-gradient(135deg,#60a5fa,#a78bfa);padding:.35rem .7rem;border-radius:999px;color:#0b1020;font-weight:800}
+  .muted{color:var(--muted);font-weight:600}
+  .grid{display:grid;gap:var(--space);grid-template-columns: 1fr}
+  @media(min-width: 820px){ .grid{grid-template-columns: minmax(280px, 360px) 1fr} }
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space)}
+  h2{margin:.25rem 0 .6rem;font-size:clamp(1.05rem, 1.6vw, 1.15rem)}
+  h3{margin:.6rem 0 .4rem;font-size:clamp(1rem, 1.4vw, 1.05rem)}
+  label{font-size:.92em;color:var(--muted)}
+  input[type="text"], input[type="number"], textarea, select{
+    width:100%;padding:.65rem .75rem;border:1px solid var(--border);border-radius:10px;background:#fff;color:#111827;font:inherit
+  }
+  @media (prefers-color-scheme: dark){
+    input,textarea,select{background:#0b1220;color:var(--text)}
+  }
+
+  .row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .row>.grow{flex:1}
+  .divider{height:1px;background:var(--border);margin:.7rem 0}
+
+  /* ===== Buttons ===== */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+    border:1px solid var(--border);background:#fff;color:#111827;border-radius:10px;
+    padding:.55rem .9rem;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04);font-weight:700
+  }
+  .btn:hover{background:#f6f7fb}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.ok{background:var(--ok);color:#fff;border-color:transparent}
+  .btn.warn{background:var(--warn);color:#fff;border-color:transparent}
+  .btn.err{background:var(--err);color:#fff;border-color:transparent}
+
+  .toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .tool-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:clamp(36px, 6vw, 40px);height:clamp(36px, 6vw, 40px);
+    border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:clamp(16px, 3.5vw, 18px);
+    box-shadow:0 1px 2px rgba(0,0,0,.04)
+  }
+  .tool-btn:hover{background:#f6f7fb}
+
+  /* ===== Pills & lists ===== */
+  .list{display:flex;flex-direction:column;gap:.5rem}
+  .pill{display:inline-flex;gap:.35rem;align-items:center;border:1px solid var(--border);border-radius:999px;padding:.25rem .6rem;background:#fff}
+  .kv{display:grid;grid-template-columns: 140px 1fr;gap:.5rem}
+  @media(max-width: 480px){ .kv{ grid-template-columns: 1fr; } }
+
+  /* ===== Code blocks ===== */
+  pre{background:#0f172a;color:#e5e7eb;border-radius:12px;padding:12px;overflow:auto;border:1px solid #1f2836;-webkit-overflow-scrolling:touch}
+  code{font-family:var(--mono);font-size:clamp(12px, 1.1vw + 10px, 14px)}
+  #logs{min-height:80px;max-height:220px}
+
+  /* ===== Footer ===== */
+  footer{margin:calc(var(--space)*1.2) 0 .5rem;text-align:center;color:var(--muted)}
+
+  /* ===== Touch targets on small screens ===== */
+  @media (hover:none) and (pointer:coarse){
+    .btn, .tool-btn{padding:.7rem 1rem}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <span class="badge">🗳️ Voting UI</span>
+      <span class="muted">Single-signer • Admin close • Inline datum</span>
+    </div>
+    <div class="toolbar">
+      <button class="tool-btn" title="Download Datum" onclick="downloadCode('VoteDatum.json')">⬇️</button>
+      <button class="tool-btn" title="Copy Datum" onclick="copyDatum()">📋</button>
+      <button class="tool-btn" title="Clear Logs" onclick="clearLogs()">🧹</button>
+      <button class="tool-btn" title="Refresh" onclick="refreshPage()">🔄</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Left: Controls -->
+    <aside class="panel">
+      <h2>1) Init</h2>
+      <div class="row">
+        <div class="grow">
+          <label>Admin (vpAdmin / PubKeyHash)</label>
+          <input id="admin" type="text" placeholder="admin-pkh" value="admin-0001" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h3>Initial Candidates</h3>
+      <div class="row">
+        <input id="newCandidate" class="grow" type="text" placeholder="candidate (bytes/ASCII ok)" />
+        <button class="btn" onclick="addCandidate()">Add</button>
+      </div>
+      <div class="list" id="candidateList" aria-live="polite"></div>
+
+      <div class="divider"></div>
+
+      <div class="row">
+        <button class="btn ok grow" onclick="initState()">Create Initial Datum</button>
+        <button class="btn grow" onclick="resetState()">Reset</button>
+      </div>
+
+      <h2 style="margin-top:.9rem;">2) Voting</h2>
+      <div class="row">
+        <div class="grow">
+          <label>Signer (voter's PubKeyHash)</label>
+          <input id="signer" type="text" placeholder="pkh-of-voter" />
+        </div>
+      </div>
+      <div id="voteButtons" class="row" style="margin-top:.5rem;flex-wrap:wrap;"></div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn warn grow" onclick="closeVote()">Close (Admin Only)</button>
+      </div>
+      <p class="muted" style="font-size:.9em;margin:.5rem 0 0">Rules: open==true, exactly one signer, no duplicates, inline datum updates with voters & tallies.</p>
+    </aside>
+
+    <!-- Right: State & Output -->
+    <main>
+      <div class="panel">
+        <h2>State</h2>
+        <div class="kv">
+          <div>Open?</div><div id="stateOpen" class="pill">-</div>
+          <div>Voters</div><div id="stateVoters" class="pill">-</div>
+          <div>Tallies</div><div id="stateTallies" class="pill">-</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Inline Datum (JSON-like)</h2>
+        <pre><code id="code-block">{}</code></pre>
+        <div class="row" style="margin-top:.6rem;flex-wrap:wrap;">
+          <button class="btn" onclick="downloadCode('VoteDatum.json')">⬇️ Download</button>
+          <button class="btn" onclick="copyDatum()">📋 Copy</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Tx Payload (for off-chain)</h2>
+        <pre><code id="tx-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Logs</h2>
+        <pre id="logs" aria-live="polite"></pre>
+      </div>
+    </main>
+  </div>
+
+  <footer>Responsive Plutus V2 voting demo — no chain connection, pure UI logic. 💙</footer>
+</div>
+
+<script>
+  // ===== Model (mirrors on-chain types) =====
+  let vdOpen = true;
+  let vdVoters = [];
+  let vdTallies = [];
+  let candidates = [];
+  let vpAdmin = 'admin-0001';
+
+  // ===== Helpers =====
+  const el = sel => document.querySelector(sel);
+  const log = msg => { const l = el('#logs'); l.textContent += msg + '\\n'; l.scrollTop = l.scrollHeight; };
+  const hasVoted = pkh => vdVoters.includes(pkh);
+
+  function incTally(candidate, tallies){
+    const next = [];
+    let done = false;
+    for(const [c,n] of tallies){
+      if(!done && c===candidate){ next.push([c, n+1]); done = true; }
+      else { next.push([c,n]); }
+    }
+    if(!done){ next.push([candidate,1]); }
+    return next;
+  }
+
+  // ===== Render =====
+  function renderState(){
+    el('#stateOpen').textContent = vdOpen ? 'true' : 'false';
+    el('#stateVoters').textContent = vdVoters.length ? vdVoters.join(', ') : '(none)';
+    el('#stateTallies').textContent = vdTallies.length ? vdTallies.map(([c,n])=>`${c}:${n}`).join(', ') : '(none)';
+    const datum = { vdOpen, vdVoters:[...vdVoters], vdTallies: vdTallies.map(([c,n])=>[c,n]) };
+    el('#code-block').textContent = JSON.stringify(datum, null, 2);
+  }
+
+  function renderCandidates(){
+    const list = el('#candidateList');
+    list.innerHTML = '';
+    candidates.forEach((c, idx)=>{
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `
+        <span class="pill" title="Candidate">${c}</span>
+        <button class="btn err" onclick="removeCandidate(${idx})">Remove</button>
+      `;
+      list.appendChild(row);
+    });
+    const vb = el('#voteButtons');
+    vb.innerHTML = '';
+    candidates.forEach(c=>{
+      const b = document.createElement('button');
+      b.className = 'btn primary';
+      b.textContent = `Vote: ${c}`;
+      b.style.flex = '1 1 140px'; // responsive rows
+      b.onclick = ()=>vote(c);
+      vb.appendChild(b);
+    });
+  }
+
+  // ===== Init / Reset =====
+  function addCandidate(){
+    const c = el('#newCandidate').value.trim();
+    if(!c){ alert('Enter a candidate'); return; }
+    if(candidates.includes(c)){ alert('Already added'); return; }
+    candidates.push(c);
+    el('#newCandidate').value = '';
+    renderCandidates();
+    log(`Added candidate "${c}"`);
+  }
+  function removeCandidate(i){
+    const c = candidates[i];
+    candidates.splice(i,1);
+    vdTallies = vdTallies.filter(([k,_])=>k!==c);
+    renderCandidates();
+    renderState();
+    log(`Removed candidate "${c}"`);
+  }
+  function initState(){
+    vpAdmin = el('#admin').value.trim() || vpAdmin;
+    vdOpen = true;
+    vdVoters = [];
+    vdTallies = candidates.map(c=>[c,0]);
+    renderState();
+    buildTxPayload({type:'Init'});
+    log(`Initialized: admin=${vpAdmin}, candidates=[${candidates.join(', ')}]`);
+  }
+  function resetState(){
+    vdOpen = true; vdVoters = []; vdTallies = []; candidates = [];
+    el('#admin').value = vpAdmin = 'admin-0001';
+    renderCandidates(); renderState();
+    el('#tx-block').textContent = '{}';
+    log('State reset.');
+  }
+
+  // ===== Actions =====
+  function vote(candidate){
+    const signer = el('#signer').value.trim();
+    if(!signer){ alert('Provide signer PKH'); return; }
+    if(!vdOpen){ log('❌ voting closed'); return; }
+    if(hasVoted(signer)){ log('❌ already voted'); return; }
+    if(!candidates.includes(candidate)){ log('❌ unknown candidate'); return; }
+
+    const vdVotersNew = [signer, ...vdVoters];
+    const vdTalliesNew = incTally(candidate, vdTallies);
+
+    vdVoters = vdVotersNew; vdTallies = vdTalliesNew;
+    renderState();
+
+    buildTxPayload({
+      type:'Vote',
+      candidate,
+      signer,
+      updatedDatum:{ vdOpen, vdVoters: vdVotersNew, vdTallies: vdTalliesNew }
+    });
+    log(`✅ vote accepted by signer=${signer} for "${candidate}"`);
+  }
+
+  function closeVote(){
+    const admin = el('#admin').value.trim();
+    if(!admin){ alert('Set admin PKH first'); return; }
+    if(admin !== vpAdmin){ log('❌ not admin (vpAdmin mismatch)'); return; }
+    vdOpen = false; renderState();
+    buildTxPayload({ type:'Close', admin });
+    log('🔒 Vote closed by admin.');
+  }
+
+  // ===== Payload & Toolbar =====
+  function buildTxPayload(obj){ el('#tx-block').textContent = JSON.stringify(obj, null, 2); }
+  function getDatumText(){ return el('#code-block').textContent || '{}'; }
+
+  function downloadCode(filename='VoteDatum.json'){
+    const text = getDatumText();
+    const blob = new Blob([text], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  async function copyDatum(){
+    const text = getDatumText();
+    try{
+      if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+      else { const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      log('📋 Datum copied to clipboard.');
+    }catch(e){ alert('Copy failed: '+e.message); }
+  }
+  function clearLogs(){ el('#logs').textContent = ''; }
+  function refreshPage(){ window.location.reload(); }
+
+  // ===== Boot =====
+  (function boot(){
+    candidates = ['alice','bob'];
+    renderCandidates();
+    initState();
+  })();
+</script>
+</body>
+</html>

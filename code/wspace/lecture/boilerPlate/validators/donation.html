@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Donation Validator Tutorial</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 2rem; line-height: 1.6; }
+    pre { background: #f5f5f5; padding: 1em; overflow-x: auto; }
+    h1, h2, h3 { color: #2c3e50; }
+    code { font-family: Consolas, monospace; }
+    .section { margin-top: 2em; }
+  </style>
+</head>
+<body>
+
+  <h1>🧾 Donation Validator Tutorial</h1>
+
+  <div class="section">
+    <h2>1. Overview</h2>
+    <p>This validator script handles a <strong>Donation Campaign</strong> on the Cardano blockchain. It enforces minimum donations, deadlines, refunds, and withdrawals using <code>Plutus V2</code>.</p>
+  </div>
+
+  <div class="section">
+    <h2>2. Key Components</h2>
+    <ul>
+      <li><strong>Datum:</strong> <code>CampaignDatum</code></li>
+      <li><strong>Redeemer:</strong> <code>CampaignActions</code></li>
+      <li><strong>Validator:</strong> <code>mkCampaignValidator</code></li>
+      <li><strong>Minimum Donation:</strong> 1 ADA</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>3. Datum & Redeemer Types</h2>
+    <pre><code>data CampaignDatum = CampaignDatum
+  { beneficiary  :: PubKeyHash
+  , deadline     :: POSIXTime
+  , goal         :: Integer
+  , totalDonated :: Integer
+  }</code></pre>
+    <pre><code>data CampaignActions = Donate | Withdraw | Refund</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>4. Validator Logic</h2>
+    <p><strong>Donate:</strong></p>
+    <ul>
+      <li>Must be before deadline</li>
+      <li>Amount ≥ 1 ADA</li>
+      <li>Updated datum must be correct</li>
+    </ul>
+
+    <p><strong>Withdraw:</strong></p>
+    <ul>
+      <li>Signed by beneficiary</li>
+      <li>After deadline</li>
+      <li>Goal met</li>
+    </ul>
+
+    <p><strong>Refund:</strong></p>
+    <ul>
+      <li>After deadline</li>
+      <li>Goal not met</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>5. Output Datum Verification</h2>
+    <p>The validator ensures that the new datum on the output reflects the updated total donations correctly.</p>
+  </div>
+
+  <div class="section">
+    <h2>6. Main Function</h2>
+    <pre><code>main :: IO ()
+main = do
+    putStrLn "Validator compiled successfully!"
+    writeValidator "./assets/campaign-validator.plutus" validator</code></pre>
+  </div>
+
+  <div class="section">
+    <h2>📘 Glossary</h2>
+    <ul>
+      <li><strong>Datum:</strong> Custom data type used to carry state in UTxOs</li>
+      <li><strong>Redeemer:</strong> Data representing intent (Donate, Refund...)</li>
+      <li><strong>ScriptContext:</strong> Tx environment passed to the validator</li>
+      <li><strong>TxInfo:</strong> Metadata about the current transaction</li>
+    </ul>
+  </div>
+
+</body>
+</html>

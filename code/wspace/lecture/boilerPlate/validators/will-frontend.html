@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Will — Frontend UI (Plutus V2)</title>
+<style>
+  :root{
+    --bg:#ffffff;--panel:#f7f9fc;--muted:#6b7280;--text:#1f2937;--accent:#2563eb;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--border:#e5e7eb;
+    --radius:14px;--space:clamp(10px,2vw,16px);--font:clamp(14px,1.1vw+12px,16px);
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#0b0f17;--panel:#0f172a;--text:#e5e7eb;--border:#1f2836;--muted:#9aa4b2}
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:var(--font)/1.6 var(--sans)}
+  .wrap{max-width:1200px;margin:0 auto;padding:calc(var(--space)*1.5) var(--space)}
+  header{display:flex;gap:var(--space);align-items:center;justify-content:space-between;margin-bottom:var(--space)}
+  .title{display:flex;gap:.6rem;align-items:center;font-weight:800;flex-wrap:wrap}
+  .badge{display:inline-flex;gap:.5rem;align-items:center;background:linear-gradient(135deg,#60a5fa,#a78bfa);padding:.35rem .7rem;border-radius:999px;color:#0b1020;font-weight:800}
+  .muted{color:var(--muted);font-weight:600}
+  .grid{display:grid;gap:var(--space);grid-template-columns:1fr}
+  @media(min-width:900px){.grid{grid-template-columns:minmax(360px,440px) 1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space)}
+  h2{margin:.25rem 0 .6rem;font-size:clamp(1.05rem,1.6vw,1.2rem)}
+  h3{margin:.6rem 0 .4rem;font-size:clamp(1rem,1.4vw,1.05rem)}
+  label{font-size:.92em;color:var(--muted)}
+  input[type="text"],input[type="number"],textarea,select{
+    width:100%;padding:.65rem .75rem;border:1px solid var(--border);border-radius:10px;background:#fff;color:#111827;font:inherit
+  }
+  @media (prefers-color-scheme: dark){
+    input,textarea,select{background:#0b1220;color:var(--text)}
+  }
+  .row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .row>.grow{flex:1}
+  .divider{height:1px;background:var(--border);margin:.7rem 0}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid var(--border);background:#fff;color:#111827;border-radius:10px;padding:.55rem .9rem;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04);font-weight:700}
+  .btn:hover{background:#f6f7fb}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.ok{background:var(--ok);color:#fff;border-color:transparent}
+  .btn.warn{background:var(--warn);color:#fff;border-color:transparent}
+  .btn.err{background:var(--err);color:#fff;border-color:transparent}
+
+  .toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .tool-btn{display:inline-flex;align-items:center;justify-content:center;width:clamp(36px,6vw,40px);height:clamp(36px,6vw,40px);border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:clamp(16px,3.5vw,18px);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .tool-btn:hover{background:#f6f7fb}
+
+  pre{background:#0f172a;color:#e5e7eb;border-radius:12px;padding:12px;overflow:auto;border:1px solid #1f2836;-webkit-overflow-scrolling:touch}
+  code{font-family:var(--mono);font-size:clamp(12px,1.1vw+10px,14px)}
+  #logs{min-height:80px;max-height:240px}
+
+  .benef-list{display:grid;gap:.8rem}
+  .benef{border:1px dashed var(--border);border-radius:10px;padding:.6rem}
+  .assets{display:grid;gap:.4rem;margin-top:.4rem}
+  .asset-row{display:flex;gap:.4rem;align-items:center}
+  .asset-row input{flex:1}
+  .pill{display:inline-flex;gap:.35rem;align-items:center;border:1px solid var(--border);border-radius:999px;padding:.25rem .6rem;background:#fff}
+  footer{margin:calc(var(--space)*1.2) 0 .5rem;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <span class="badge">🏛️ Will UI</span>
+      <span class="muted">Execute (after unlock, executor signs, plan satisfied) • Revoke (before unlock, testator signs)</span>
+    </div>
+    <div class="toolbar">
+      <button class="tool-btn" title="Download Params" onclick="downloadJSON('WillParams.json', buildParams())">⬇️</button>
+      <button class="tool-btn" title="Copy Params" onclick="copyJSON(buildParams())">📋</button>
+      <button class="tool-btn" title="Clear Logs" onclick="clearLogs()">🧹</button>
+      <button class="tool-btn" title="Refresh" onclick="location.reload()">🔄</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Left: Params & Simulation -->
+    <aside class="panel">
+      <h2>1) WillParams</h2>
+      <div class="row">
+        <div class="grow">
+          <label>wpTestator (PubKeyHash)</label>
+          <input id="wpTestator" type="text" value="pkh-testator-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>wpExecutor (PubKeyHash)</label>
+          <input id="wpExecutor" type="text" value="pkh-executor-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>wpUnlockTime (POSIX ms)</label>
+          <input id="wpUnlockTime" type="number" min="0" />
+        </div>
+        <button class="btn" onclick="setUnlockInDays(2)">+2d</button>
+        <button class="btn" onclick="setUnlockNow()">= now</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h3>1.1 Beneficiaries (wpPlan)</h3>
+      <div id="benefList" class="benef-list"></div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn" onclick="addBenef()">+ Add Beneficiary</button>
+        <button class="btn" onclick="clearBenefs()">Clear</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>2) Tx Simulation Inputs</h2>
+      <h3>2.1 Signatures</h3>
+      <div class="row">
+        <label><input id="sigTestator" type="checkbox" /> Signed by Testator</label>
+        <label><input id="sigExecutor" type="checkbox" /> Signed by Executor</label>
+      </div>
+
+      <h3 style="margin-top:.5rem;">2.2 Time</h3>
+      <div class="row">
+        <div class="grow">
+          <label>now (POSIX ms)</label>
+          <input id="now" type="number" />
+        </div>
+        <button class="btn" onclick="setNow()">Set Now = System Time</button>
+      </div>
+
+      <h3 style="margin-top:.5rem;">2.3 Execute Outputs (who gets what)</h3>
+      <p class="muted" style="margin:.2rem 0 .6rem">For each beneficiary/asset spec in the plan, set how much the transaction pays. Must be ≥ required quantity.</p>
+      <div id="outGrid" class="benef-list"></div>
+
+      <div class="row" style="margin-top:.8rem;">
+        <label><input id="noContinuingOutputs" type="checkbox" checked /> No continuing outputs</label>
+      </div>
+
+      <div class="divider"></div>
+      <div class="row">
+        <button class="btn primary grow" onclick="simulateExecute()">▶ Execute</button>
+        <button class="btn warn grow" onclick="simulateRevoke()">▶ Revoke</button>
+      </div>
+    </aside>
+
+    <!-- Right: Snapshots & Logs -->
+    <main>
+      <div class="panel">
+        <h2>Params Snapshot</h2>
+        <pre><code id="params-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Tx Payload</h2>
+        <pre><code id="tx-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Checks</h2>
+        <pre><code id="checks-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Logs</h2>
+        <pre id="logs" aria-live="polite"></pre>
+        <div class="row" style="margin-top:.6rem;flex-wrap:wrap;">
+          <button class="btn" onclick="downloadJSON('WillParams.json', buildParams())">⬇️ Download</button>
+          <button class="btn" onclick="copyJSON(buildParams())">📋 Copy</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer>Responsive Will validator demo — no chain connection, pure UI logic. 💙</footer>
+</div>
+
+<script>
+  // ---------- Utilities ----------
+  const el = s => document.querySelector(s);
+  const els = s => Array.from(document.querySelectorAll(s));
+  const log = m => { const L = el('#logs'); L.textContent += m + '\\n'; L.scrollTop = L.scrollHeight; };
+  const j = o => JSON.stringify(o, null, 2);
+
+  function setNow(){ el('#now').value = Date.now(); }
+  function setUnlockInDays(d){
+    const base = Date.now();
+    el('#wpUnlockTime').value = base + d*24*60*60*1000;
+    renderParams();
+    buildOutGrid();
+  }
+  function setUnlockNow(){ el('#wpUnlockTime').value = Date.now(); renderParams(); }
+
+  function downloadJSON(filename, obj){
+    const blob = new Blob([j(obj)], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  async function copyJSON(obj){
+    const text = j(obj);
+    try{
+      if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+      else { const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      log('📋 Copied JSON to clipboard.');
+    }catch(e){ alert('Copy failed: '+e.message); }
+  }
+  function clearLogs(){ el('#logs').textContent=''; }
+
+  // ---------- Beneficiaries & Assets UI ----------
+  function addBenef(pkh='pkh-benef-'+crypto.randomUUID().slice(0,6)){
+    const id = crypto.randomUUID().slice(0,8);
+    const box = document.createElement('div');
+    box.className='benef';
+    box.dataset.id = id;
+    box.innerHTML = `
+      <div class="row">
+        <div class="grow">
+          <label>Beneficiary bPkh</label>
+          <input class="bPkh" type="text" value="${pkh}" />
+        </div>
+        <button class="btn err" onclick="this.closest('.benef').remove(); renderParams(); buildOutGrid();">✖</button>
+      </div>
+      <div class="assets"></div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn" onclick="addAssetRow(this)">+ Add AssetSpec</button>
+      </div>
+    `;
+    el('#benefList').appendChild(box);
+    addAssetRow(box.querySelector('.assets'));  // add one spec by default
+    renderParams(); buildOutGrid();
+  }
+
+  function addAssetRow(btnOrContainer){
+    const container = btnOrContainer.classList && btnOrContainer.classList.contains('assets')
+      ? btnOrContainer
+      : btnOrContainer.closest('.benef').querySelector('.assets');
+    const row = document.createElement('div');
+    row.className='asset-row';
+    row.innerHTML = `
+      <input class="asCS"  type="text" placeholder="CurrencySymbol" value="policyXYZ" />
+      <input class="asTN"  type="text" placeholder="TokenName"      value="TOKEN" />
+      <input class="asQty" type="number" placeholder="Qty" min="0"  value="1" />
+      <button class="btn err" onclick="this.parentElement.remove(); renderParams(); buildOutGrid();">✖</button>
+    `;
+    container.appendChild(row);
+    renderParams(); buildOutGrid();
+  }
+
+  function clearBenefs(){ el('#benefList').innerHTML=''; el('#outGrid').innerHTML=''; renderParams(); }
+
+  function readPlan(){
+    return els('#benefList .benef').map(b=>{
+      const pkh = b.querySelector('.bPkh').value.trim();
+      const specs = Array.from(b.querySelectorAll('.asset-row')).map(r=>{
+        return {
+          asCS:  r.querySelector('.asCS').value.trim(),
+          asTN:  r.querySelector('.asTN').value.trim(),
+          asQty: Math.max(0, parseInt(r.querySelector('.asQty').value||'0',10))
+        };
+      }).filter(s=>s.asCS && s.asTN && s.asQty>0);
+      return { bPkh: pkh, bAssets: specs };
+    }).filter(b=>b.bPkh && b.bAssets.length>0);
+  }
+
+  // ---------- Params build/render ----------
+  function buildParams(){
+    const wpTestator   = el('#wpTestator').value.trim();
+    const wpExecutor   = el('#wpExecutor').value.trim();
+    const wpUnlockTime = Math.max(0, parseInt(el('#wpUnlockTime').value||'0',10));
+    const wpPlan       = readPlan();
+    return { wpTestator, wpExecutor, wpUnlockTime, wpPlan };
+  }
+  function renderParams(){ el('#params-block').textContent = j(buildParams()); }
+
+  // ---------- Outputs UI (for Execute) ----------
+  function buildOutGrid(){
+    const out = el('#outGrid'); out.innerHTML='';
+    const plan = readPlan();
+    plan.forEach((b, bi)=>{
+      const card = document.createElement('div');
+      card.className='benef';
+      const assetsHTML = b.bAssets.map((a, ai)=>`
+        <div class="asset-row">
+          <span class="pill">${a.asCS}.${a.asTN}</span>
+          <input type="number" class="outQty" data-pkh="${b.bPkh}" data-cs="${a.asCS}" data-tn="${a.asTN}" min="0" value="${a.asQty}" />
+          <span class="muted">required ≥ ${a.asQty}</span>
+        </div>
+      `).join('');
+      card.innerHTML = `
+        <div class="row"><strong>Pay to</strong> <span class="pill">${b.bPkh}</span></div>
+        <div class="assets">${assetsHTML}</div>
+      `;
+      out.appendChild(card);
+    });
+  }
+
+  function readExecuteOutputs(){
+    const entries = els('#outGrid .outQty').map(i=>({
+      pkh: i.dataset.pkh,
+      cs:  i.dataset.cs,
+      tn:  i.dataset.tn,
+      qty: Math.max(0, parseInt(i.value||'0',10))
+    }));
+    // group by beneficiary -> asset -> qty
+    const map = {};
+    for(const e of entries){
+      const key = e.pkh + '|' + e.cs + '|' + e.tn;
+      map[key] = (map[key]||0) + e.qty;
+    }
+    return map; // key: "pkh|cs|tn" -> qty
+  }
+
+  // ---------- Checks mirroring on-chain ----------
+  const containsFrom = (t, now)=> now >= t;        // contains (from t) validRange
+  const containsTo   = (t, now)=> now < t;         // contains (to t)   validRange
+
+  function planSatisfied(outputsMap, plan){
+    return plan.every(b=>{
+      return b.bAssets.every(a=>{
+        const key = b.bPkh + '|' + a.asCS + '|' + a.asTN;
+        const paid = outputsMap[key] || 0;
+        return paid >= a.asQty;
+      });
+    });
+  }
+
+  // ---------- Simulate actions ----------
+  function simulateExecute(){
+    const P = buildParams();
+    const now = parseInt(el('#now').value || Date.now(), 10);
+    const execSigned = el('#sigExecutor').checked;
+    const noContOuts = el('#noContinuingOutputs').checked;
+    const outs = readExecuteOutputs();
+
+    const checks = {
+      executorSigned: execSigned && P.wpExecutor.length>0,
+      onOrAfter: containsFrom(P.wpUnlockTime, now),
+      planSatisfied: planSatisfied(outs, P.wpPlan),
+      noContinuingOutputs: noContOuts,
+      now
+    };
+
+    el('#checks-block').textContent = j({ action:'Execute', ...checks });
+
+    if(!checks.executorSigned){ log('❌ executor signature missing'); return renderTx('Execute', P, checks, 'FAIL', 'executor signature'); }
+    if(!checks.onOrAfter){ log('❌ too early to execute'); return renderTx('Execute', P, checks, 'FAIL', 'time'); }
+    if(!checks.planSatisfied){ log('❌ plan not satisfied'); return renderTx('Execute', P, checks, 'FAIL', 'plan'); }
+    if(!checks.noContinuingOutputs){ log('❌ must close script (no cont)'); return renderTx('Execute', P, checks, 'FAIL', 'continuing outputs'); }
+
+    log('✅ Execute allowed.');
+    renderTx('Execute', P, checks, 'PASS');
+  }
+
+  function simulateRevoke(){
+    const P = buildParams();
+    const now = parseInt(el('#now').value || Date.now(), 10);
+    const testatorSigned = el('#sigTestator').checked;
+
+    const checks = {
+      testatorSigned: testatorSigned && P.wpTestator.length>0,
+      strictlyBefore: containsTo(P.wpUnlockTime, now),
+      now
+    };
+    el('#checks-block').textContent = j({ action:'Revoke', ...checks });
+
+    if(!checks.testatorSigned){ log('❌ not testator'); return renderTx('Revoke', P, checks, 'FAIL', 'testator signature'); }
+    if(!checks.strictlyBefore){ log('❌ too late to revoke'); return renderTx('Revoke', P, checks, 'FAIL', 'time'); }
+
+    log('✅ Revoke allowed.');
+    renderTx('Revoke', P, checks, 'PASS');
+  }
+
+  // ---------- Render Tx block ----------
+  function renderTx(type, params, checks, result, reason){
+    const tx = { type, params, checks, result, reason };
+    if(type==='Execute'){
+      // Produce summarized payments for display
+      const outs = readExecuteOutputs();
+      const human = {};
+      for(const k in outs){
+        const [pkh,cs,tn] = k.split('|');
+        human[pkh] = human[pkh] || {};
+        human[pkh][cs+'.'+tn] = outs[k];
+      }
+      tx.outputs = human;
+    }
+    el('#tx-block').textContent = j(tx);
+    return tx;
+  }
+
+  // ---------- Boot ----------
+  (function boot(){
+    setNow(); setUnlockInDays(2);
+    // seed with two beneficiaries & some assets
+    addBenef('pkh-alice');   // has one default asset row; change values as needed
+    addBenef('pkh-bob');
+    // tweak default asset specs for demo
+    const firstAsset = document.querySelector('.benef .assets .asset-row .asTN'); if(firstAsset) firstAsset.value = 'GOLD';
+    renderParams(); buildOutGrid();
+  })();
+</script>
+</body>
+</html>
+

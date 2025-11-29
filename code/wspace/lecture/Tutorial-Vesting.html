@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vesting.hs Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 2px;
+      line-height: 1.7;
+      color: #222;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    code {
+      background: #eee;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧾 Detailed Tutorial: Understanding and Using <code>Vesting.hs</code></h1>
+
+  <p>This tutorial covers the <code>Vesting.hs</code> module, highlighting its purpose, critical imports, validator logic, and practical usage scenarios. This module is essential for creating simple vesting smart contracts in Plutus.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#2-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#3-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#4-validator-script-compilation">⚙️ Validator Script Compilation</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-practical-usage-example">🧪 Practical Usage Example</a></li>
+    <li><a href="#7-testing-strategy">🧷 Testing Strategy</a></li>
+    <li><a href="#8-best-practices">✅ Best Practices</a></li>
+    <li><a href="#9-glossary-of-terms">📘 Glossary of Terms</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-imports-overview">1. 📦 Imports Overview</h2>
+
+  <h3>Plutus API Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api:</strong> Provides fundamental types such as <code>POSIXTime</code>, <code>PubKeyHash</code>, and transaction context (<code>ScriptContext</code>, <code>TxInfo</code>).</li>
+    <li><strong>Plutus.V2.Ledger.Contexts:</strong> Contains utility functions for transaction context validation (<code>txSignedBy</code>).</li>
+    <li><strong>Plutus.V1.Ledger.Interval:</strong> Supplies the <code>contains</code> function for interval checking.</li>
+  </ul>
+
+  <h3>Utility and Prelude Modules</h3>
+  <ul>
+    <li><strong>Utilities:</strong> Custom utility functions for validator scripts and JSON output.</li>
+    <li><strong>PlutusTx:</strong> Enables script compilation and data serialization.</li>
+    <li><strong>PlutusTx.Prelude:</strong> Basic Plutus scripting functions.</li>
+    <li><strong>Prelude and Data.Maybe:</strong> Haskell standard library utilities for basic operations and handling optional values.</li>
+  </ul>
+
+  <h2 id="2-data-structures">2. 🗃️ Data Structures</h2>
+
+  <h3><code>VestingDatum</code></h3>
+  <p>Defines the contract's datum, which includes:</p>
+  <ul>
+    <li><strong>beneficiary</strong>: The public key hash required to authorize spending.</li>
+    <li><strong>deadline</strong>: POSIX timestamp after which funds can be accessed.</li>
+  </ul>
+
+  <h2 id="3-core-validator-logic">3. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkVestingValidator</code></h3>
+  <p><strong>Purpose:</strong></p>
+  <ul>
+    <li>Must be signed by the designated beneficiary.</li>
+    <li>Must occur after the specified deadline.</li>
+  </ul>
+
+  <p><strong>Validation Conditions:</strong></p>
+  <ul>
+    <li>Checks for beneficiary's signature using <code>txSignedBy</code>.</li>
+    <li>Verifies the transaction time interval against the deadline.</li>
+  </ul>
+
+  <h3><code>mkWrappedVestingValidator</code></h3>
+  <p>Wraps the core validator function for compatibility with Plutus on-chain scripts using <code>BuiltinData</code>.</p>
+
+  <h2 id="4-validator-script-compilation">4. ⚙️ Validator Script Compilation</h2>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator function into a Plutus Core script ready for blockchain deployment.</p>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <ul>
+    <li><strong><code>saveVal</code></strong>: Writes the compiled validator script to a <code>.plutus</code> file for deployment.</li>
+    <li><strong><code>vestingAddressBech32</code></strong>: Generates the validator script’s Bech32 address for given network (mainnet/testnet).</li>
+    <li><strong><code>printVestingDatumJSON</code></strong>: Outputs the datum required by the validator in JSON format for use in off-chain applications.</li>
+  </ul>
+
+  <h2 id="6-practical-usage-example">6. 🧪 Practical Usage Example</h2>
+
+  <pre><code>-- Save the compiled validator script
+saveVal
+
+-- Print the Bech32 address for testnet
+putStrLn $ vestingAddressBech32 Testnet
+
+-- Generate VestingDatum in JSON format
+printVestingDatumJSON (fromHexPKH "659ad08ff1...") "2025-05-04T14:30:00Z"
+</code></pre>
+
+  <h2 id="7-testing-strategy">7. 🧷 Testing Strategy</h2>
+  <ul>
+    <li>Validate the contract with scenarios around the deadline boundary.</li>
+    <li>Confirm signature checks by simulating both successful and failing beneficiary signatures.</li>
+  </ul>
+
+  <h2 id="8-best-practices">8. ✅ Best Practices</h2>
+  <ul>
+    <li>Always clearly define and handle critical datum fields.</li>
+    <li>Provide meaningful trace messages for easier debugging.</li>
+    <li>Frequently test your smart contracts with diverse and edge-case scenarios to maintain accuracy and security.</li>
+  </ul>
+
+  <h2 id="9-glossary-of-terms">9. 📘 Glossary of Terms</h2>
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Vesting</strong></td><td>The process of locking funds until a specified time or condition is met.</td></tr>
+    <tr><td><strong>Datum</strong></td><td>On-chain data associated with a script that determines how it behaves.</td></tr>
+    <tr><td><strong>Validator</strong></td><td>A smart contract that checks whether a transaction satisfies predefined rules.</td></tr>
+    <tr><td><strong>POSIXTime</strong></td><td>A time representation used in Plutus for defining deadlines and intervals.</td></tr>
+    <tr><td><strong>PubKeyHash</strong></td><td>A cryptographic hash of a public key used to authorize spending.</td></tr>
+    <tr><td><strong>txSignedBy</strong></td><td>A function that checks if a transaction was signed by a given public key.</td></tr>
+    <tr><td><strong>contains</strong></td><td>Checks if a specific point in time falls within a defined time interval.</td></tr>
+    <tr><td><strong>Bech32</strong></td><td>A human-readable encoding format used for Cardano addresses.</td></tr>
+    <tr><td><strong>BuiltinData</strong></td><td>Raw Plutus-compatible data type for on-chain serialization.</td></tr>
+    <tr><td><strong>Testnet</strong></td><td>A testing environment that simulates the real Cardano blockchain.</td></tr>
+  </table>
+
+</body>
+</html>

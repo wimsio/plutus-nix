@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Escrow NFT — Frontend UI (Plutus V2)</title>
+<style>
+  /* ===== Design tokens & fluid type ===== */
+  :root{
+    --bg:#ffffff;--panel:#f7f9fc;--muted:#6b7280;--text:#1f2937;--accent:#2563eb;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--border:#e5e7eb;
+    --radius:14px;
+    --space:clamp(10px, 2vw, 16px);
+    --font: clamp(14px, 1.1vw + 12px, 16px);
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b0f17;--panel:#0f172a;--text:#e5e7eb;--border:#1f2836;--muted:#9aa4b2; }
+  }
+
+  /* ===== Base ===== */
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:var(--font)/1.6 var(--sans)}
+  .wrap{max-width:1200px;margin:0 auto;padding:calc(var(--space)*1.5) var(--space)}
+  header{display:flex;gap:var(--space);align-items:center;justify-content:space-between;margin-bottom:var(--space)}
+  .title{display:flex;gap:.6rem;align-items:center;font-weight:800;flex-wrap:wrap}
+  .badge{display:inline-flex;gap:.5rem;align-items:center;background:linear-gradient(135deg,#60a5fa,#a78bfa);padding:.35rem .7rem;border-radius:999px;color:#0b1020;font-weight:800}
+  .muted{color:var(--muted);font-weight:600}
+  .grid{display:grid;gap:var(--space);grid-template-columns: 1fr}
+  @media(min-width: 900px){ .grid{grid-template-columns: minmax(340px, 420px) 1fr} }
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space)}
+  h2{margin:.25rem 0 .6rem;font-size:clamp(1.05rem, 1.6vw, 1.2rem)}
+  h3{margin:.6rem 0 .4rem;font-size:clamp(1rem, 1.4vw, 1.05rem)}
+  label{font-size:.92em;color:var(--muted)}
+  input[type="text"], input[type="number"], textarea, select{
+    width:100%;padding:.65rem .75rem;border:1px solid var(--border);border-radius:10px;background:#fff;color:#111827;font:inherit
+  }
+  @media (prefers-color-scheme: dark){
+    input,textarea,select{background:#0b1220;color:var(--text)}
+  }
+
+  .row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .row>.grow{flex:1}
+  .divider{height:1px;background:var(--border);margin:.7rem 0}
+
+  /* ===== Buttons ===== */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+    border:1px solid var(--border);background:#fff;color:#111827;border-radius:10px;
+    padding:.55rem .9rem;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04);font-weight:700
+  }
+  .btn:hover{background:#f6f7fb}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.ok{background:var(--ok);color:#fff;border-color:transparent}
+  .btn.warn{background:var(--warn);color:#fff;border-color:transparent}
+  .btn.err{background:var(--err);color:#fff;border-color:transparent}
+
+  .toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .tool-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:clamp(36px, 6vw, 40px);height:clamp(36px, 6vw, 40px);
+    border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:clamp(16px, 3.5vw, 18px);
+    box-shadow:0 1px 2px rgba(0,0,0,.04)
+  }
+  .tool-btn:hover{background:#f6f7fb}
+
+  /* ===== Code & pills ===== */
+  pre{background:#0f172a;color:#e5e7eb;border-radius:12px;padding:12px;overflow:auto;border:1px solid #1f2836;-webkit-overflow-scrolling:touch}
+  code{font-family:var(--mono);font-size:clamp(12px, 1.1vw + 10px, 14px)}
+  #logs{min-height:80px;max-height:220px}
+
+  footer{margin:calc(var(--space)*1.2) 0 .5rem;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <span class="badge">🤝 Escrow NFT UI</span>
+      <span class="muted">PaySeller (buyer→seller ADA, buyer gets NFT) • RefundSeller (after deadline, seller gets NFT)</span>
+    </div>
+    <div class="toolbar">
+      <button class="tool-btn" title="Download Datum" onclick="downloadDatum('EscrowDatum.json')">⬇️</button>
+      <button class="tool-btn" title="Copy Datum" onclick="copyDatum()">📋</button>
+      <button class="tool-btn" title="Clear Logs" onclick="clearLogs()">🧹</button>
+      <button class="tool-btn" title="Refresh" onclick="refreshPage()">🔄</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Left: Datum & Simulation Inputs -->
+    <aside class="panel">
+      <h2>1) Escrow Datum</h2>
+      <div class="row">
+        <div class="grow">
+          <label>edBuyer (PubKeyHash)</label>
+          <input id="edBuyer" type="text" value="buyer-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>edSeller (PubKeyHash)</label>
+          <input id="edSeller" type="text" value="seller-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>edAmount (lovelace) — price</label>
+          <input id="edAmount" type="number" min="0" value="3000000" />
+        </div>
+        <div class="grow">
+          <label>edDeadline (POSIX ms)</label>
+          <input id="edDeadline" type="number" min="0" value="" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>edCurrency (policyId)</label>
+          <input id="edCurrency" type="text" value="policyABC" />
+        </div>
+        <div class="grow">
+          <label>edToken (TokenName)</label>
+          <input id="edToken" type="text" value="CoolNFT" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.6rem;">
+        <button class="btn ok grow" onclick="applyDatum()">Apply Datum</button>
+        <button class="btn grow" onclick="resetDatum()">Reset</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>2) Sim Inputs (Tx Shape)</h2>
+      <h3>2.1 Common</h3>
+      <div class="row">
+        <div class="grow">
+          <label>now (POSIX ms)</label>
+          <input id="now" type="number" min="0" />
+        </div>
+        <button class="btn" onclick="setNowToSystem()">Set Now = System Time</button>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <label><input type="checkbox" id="scriptHasNFT" checked /> Script input contains NFT (edCurrency, edToken)</label>
+      </div>
+
+      <h3 style="margin-top:.75rem;">2.2 PaySeller path</h3>
+      <div class="row">
+        <div class="grow">
+          <label>buyerSigner (PubKeyHash)</label>
+          <input id="buyerSigner" type="text" placeholder="must equal edBuyer to pass" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>paidToSeller (lovelace)</label>
+          <input id="paidToSeller" type="number" min="0" value="3000000" />
+        </div>
+        <div class="grow">
+          <label>nftToBuyer (0/1)</label>
+          <input id="nftToBuyer" type="number" min="0" max="1" value="1" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn primary grow" onclick="paySeller()">▶ PaySeller</button>
+      </div>
+      <p class="muted" style="font-size:.9em;margin:.4rem 0 0">Checks: script input has NFT, buyer signs, seller receives ≥ price (ADA), buyer receives NFT.</p>
+
+      <h3 style="margin-top:1rem;">2.3 RefundSeller path</h3>
+      <div class="row">
+        <div class="grow">
+          <label>sellerSigner (PubKeyHash)</label>
+          <input id="sellerSigner" type="text" placeholder="must equal edSeller to pass" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>nftToSeller (0/1)</label>
+          <input id="nftToSeller" type="number" min="0" max="1" value="1" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn warn grow" onclick="refundSeller()">▶ RefundSeller</button>
+      </div>
+      <p class="muted" style="font-size:.9em;margin:.4rem 0 0">Checks: script input has NFT, seller signs, <em>after</em> deadline, seller receives NFT.</p>
+    </aside>
+
+    <!-- Right: Snapshots & Logs -->
+    <main>
+      <div class="panel">
+        <h2>Datum Snapshot</h2>
+        <pre><code id="datum-block">{}</code></pre>
+        <div class="row" style="margin-top:.6rem;flex-wrap:wrap;">
+          <button class="btn" onclick="downloadDatum('EscrowDatum.json')">⬇️ Download</button>
+          <button class="btn" onclick="copyDatum()">📋 Copy</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Tx Payload (for off-chain)</h2>
+        <pre><code id="tx-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Math & Checks</h2>
+        <pre><code id="math-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Logs</h2>
+        <pre id="logs" aria-live="polite"></pre>
+      </div>
+    </main>
+  </div>
+
+  <footer>Responsive Escrow NFT validator demo — no chain connection, pure UI logic. 💙</footer>
+</div>
+
+<script>
+  // ===== State mirrors on-chain EscrowDatum =====
+  let datum = {
+    edBuyer: 'buyer-0001',
+    edSeller: 'seller-0001',
+    edAmount: 3_000_000,     // lovelace
+    edDeadline: 0,           // POSIX ms
+    edCurrency: 'policyABC',
+    edToken: 'CoolNFT'
+  };
+
+  // ===== Utility =====
+  const el = sel => document.querySelector(sel);
+  const log = msg => { const l = el('#logs'); l.textContent += msg + '\\n'; l.scrollTop = l.scrollHeight; };
+  const toAda = (lovelace) => (lovelace / 1_000_000);
+
+  function renderDatum(){ el('#datum-block').textContent = JSON.stringify(datum, null, 2); }
+  function renderTx(o){ el('#tx-block').textContent = JSON.stringify(o, null, 2); }
+  function renderMath(o){ el('#math-block').textContent = JSON.stringify(o, null, 2); }
+
+  function setNowToSystem(){ el('#now').value = Date.now(); }
+
+  // ===== Datum apply/reset =====
+  function applyDatum(){
+    datum.edBuyer    = el('#edBuyer').value.trim()    || datum.edBuyer;
+    datum.edSeller   = el('#edSeller').value.trim()   || datum.edSeller;
+    datum.edAmount   = Math.max(0, parseInt(el('#edAmount').value || datum.edAmount, 10));
+    datum.edDeadline = parseInt(el('#edDeadline').value || datum.edDeadline, 10);
+    datum.edCurrency = el('#edCurrency').value.trim() || datum.edCurrency;
+    datum.edToken    = el('#edToken').value.trim()    || datum.edToken;
+    renderDatum();
+    renderTx({ type:'ApplyDatum', datum });
+    log('✅ Datum applied.');
+  }
+  function resetDatum(){
+    datum = { edBuyer:'buyer-0001', edSeller:'seller-0001', edAmount:3_000_000, edDeadline:0, edCurrency:'policyABC', edToken:'CoolNFT' };
+    el('#edBuyer').value = datum.edBuyer;
+    el('#edSeller').value = datum.edSeller;
+    el('#edAmount').value = datum.edAmount;
+    el('#edDeadline').value = datum.edDeadline;
+    el('#edCurrency').value = datum.edCurrency;
+    el('#edToken').value = datum.edToken;
+    renderDatum();
+    renderTx({ type:'ResetDatum', datum });
+    log('Datum reset to defaults.');
+  }
+
+  // ===== On-chain helper mirrors =====
+  function scriptInputContainsNFT(){
+    return el('#scriptHasNFT').checked;
+  }
+  function afterDeadline(now){
+    // Plutus: contains (from (deadline+1)) txRange ; here: now > deadline
+    return now > datum.edDeadline;
+  }
+
+  // ===== PaySeller path =====
+  function paySeller(){
+    const now           = parseInt(el('#now').value || Date.now(), 10);
+    const buyerSigner   = el('#buyerSigner').value.trim();
+    const paidToSeller  = Math.max(0, parseInt(el('#paidToSeller').value || '0', 10));
+    const nftToBuyer    = Math.max(0, Math.min(1, parseInt(el('#nftToBuyer').value || '0', 10)));
+
+    const checks = {
+      scriptHasNFT: scriptInputContainsNFT(),
+      buyerSigned: buyerSigner === datum.edBuyer,
+      sellerPaid: paidToSeller >= datum.edAmount,
+      buyerGetsNFT: nftToBuyer >= 1,
+      now
+    };
+    renderMath({ path:'PaySeller', ...checks, priceAda: toAda(datum.edAmount), paidAda: toAda(paidToSeller) });
+
+    if(!checks.scriptHasNFT){ log('❌ script input missing NFT'); return renderTx({ type:'PaySeller', result:'FAIL', reason:'script NFT' }); }
+    if(!checks.buyerSigned){ log('❌ buyer signature missing'); return renderTx({ type:'PaySeller', result:'FAIL', reason:'buyer signature' }); }
+    if(!checks.sellerPaid){ log('❌ seller not paid required amount'); return renderTx({ type:'PaySeller', result:'FAIL', reason:'amount' }); }
+    if(!checks.buyerGetsNFT){ log('❌ buyer did not receive NFT'); return renderTx({ type:'PaySeller', result:'FAIL', reason:'NFT to buyer' }); }
+
+    renderTx({
+      type:'PaySeller',
+      now,
+      outputs: {
+        toSeller: { adaLovelace: paidToSeller },
+        toBuyer:  { [datum.edCurrency+'.'+datum.edToken]: 1 }
+      },
+      result:'PASS'
+    });
+    log('✅ PaySeller allowed.');
+  }
+
+  // ===== RefundSeller path =====
+  function refundSeller(){
+    const now           = parseInt(el('#now').value || Date.now(), 10);
+    const sellerSigner  = el('#sellerSigner').value.trim();
+    const nftToSeller   = Math.max(0, Math.min(1, parseInt(el('#nftToSeller').value || '0', 10)));
+
+    const checks = {
+      scriptHasNFT: scriptInputContainsNFT(),
+      sellerSigned: sellerSigner === datum.edSeller,
+      afterDeadline: afterDeadline(now),
+      sellerGetsNFT: nftToSeller >= 1,
+      now
+    };
+    renderMath({ path:'RefundSeller', ...checks, deadline: datum.edDeadline });
+
+    if(!checks.scriptHasNFT){ log('❌ script input missing NFT'); return renderTx({ type:'RefundSeller', result:'FAIL', reason:'script NFT' }); }
+    if(!checks.sellerSigned){ log('❌ seller signature missing'); return renderTx({ type:'RefundSeller', result:'FAIL', reason:'seller signature' }); }
+    if(!checks.afterDeadline){ log('❌ too early for refund'); return renderTx({ type:'RefundSeller', result:'FAIL', reason:'deadline' }); }
+    if(!checks.sellerGetsNFT){ log('❌ seller did not receive NFT'); return renderTx({ type:'RefundSeller', result:'FAIL', reason:'NFT to seller' }); }
+
+    renderTx({
+      type:'RefundSeller',
+      now,
+      outputs: {
+        toSeller: { [datum.edCurrency+'.'+datum.edToken]: 1 }
+      },
+      result:'PASS'
+    });
+    log('✅ RefundSeller allowed.');
+  }
+
+  // ===== Toolbar =====
+  function getDatumText(){ return el('#datum-block').textContent || '{}'; }
+  function downloadDatum(filename='EscrowDatum.json'){
+    const text = getDatumText();
+    const blob = new Blob([text], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  async function copyDatum(){
+    const text = getDatumText();
+    try{
+      if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+      else { const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      log('📋 Datum copied to clipboard.');
+    }catch(e){ alert('Copy failed: '+e.message); }
+  }
+  function clearLogs(){ el('#logs').textContent = ''; }
+  function refreshPage(){ window.location.reload(); }
+
+  // ===== Boot =====
+  (function boot(){
+    el('#now').value = Date.now();
+    // default deadline in +2 days
+    const d = Date.now() + 2*24*60*60*1000;
+    el('#edDeadline').value = d; datum.edDeadline = d;
+    renderDatum();
+  })();
+</script>
+</body>
+</html>

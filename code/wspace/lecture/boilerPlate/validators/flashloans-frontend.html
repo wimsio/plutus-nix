@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Flash Loan — Frontend UI (Plutus V2)</title>
+<style>
+  /* ===== Design tokens & fluid type ===== */
+  :root{
+    --bg:#ffffff;--panel:#f7f9fc;--muted:#6b7280;--text:#1f2937;--accent:#2563eb;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--border:#e5e7eb;
+    --radius:14px;
+    --space:clamp(10px, 2vw, 16px);
+    --font: clamp(14px, 1.1vw + 12px, 16px);
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0b0f17;--panel:#0f172a;--text:#e5e7eb;--border:#1f2836;--muted:#9aa4b2; }
+  }
+
+  /* ===== Base ===== */
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:var(--font)/1.6 var(--sans)}
+  .wrap{max-width:1200px;margin:0 auto;padding:calc(var(--space)*1.5) var(--space)}
+  header{display:flex;gap:var(--space);align-items:center;justify-content:space-between;margin-bottom:var(--space)}
+  .title{display:flex;gap:.6rem;align-items:center;font-weight:800;flex-wrap:wrap}
+  .badge{display:inline-flex;gap:.5rem;align-items:center;background:linear-gradient(135deg,#60a5fa,#a78bfa);padding:.35rem .7rem;border-radius:999px;color:#0b1020;font-weight:800}
+  .muted{color:var(--muted);font-weight:600}
+  .grid{display:grid;gap:var(--space);grid-template-columns: 1fr}
+  @media(min-width: 900px){ .grid{grid-template-columns: minmax(340px, 420px) 1fr} }
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space)}
+  h2{margin:.25rem 0 .6rem;font-size:clamp(1.05rem, 1.6vw, 1.2rem)}
+  h3{margin:.6rem 0 .4rem;font-size:clamp(1rem, 1.4vw, 1.05rem)}
+  label{font-size:.92em;color:var(--muted)}
+  input[type="text"], input[type="number"], textarea, select{
+    width:100%;padding:.65rem .75rem;border:1px solid var(--border);border-radius:10px;background:#fff;color:#111827;font:inherit
+  }
+  @media (prefers-color-scheme: dark){
+    input,textarea,select{background:#0b1220;color:var(--text)}
+  }
+
+  .row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .row>.grow{flex:1}
+  .divider{height:1px;background:var(--border);margin:.7rem 0}
+
+  /* ===== Buttons ===== */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:.4rem;
+    border:1px solid var(--border);background:#fff;color:#111827;border-radius:10px;
+    padding:.55rem .9rem;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04);font-weight:700
+  }
+  .btn:hover{background:#f6f7fb}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.ok{background:var(--ok);color:#fff;border-color:transparent}
+  .btn.warn{background:var(--warn);color:#fff;border-color:transparent}
+  .btn.err{background:var(--err);color:#fff;border-color:transparent}
+
+  .toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .tool-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:clamp(36px, 6vw, 40px);height:clamp(36px, 6vw, 40px);
+    border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:clamp(16px, 3.5vw, 18px);
+    box-shadow:0 1px 2px rgba(0,0,0,.04)
+  }
+  .tool-btn:hover{background:#f6f7fb}
+
+  /* ===== Code & pills ===== */
+  pre{background:#0f172a;color:#e5e7eb;border-radius:12px;padding:12px;overflow:auto;border:1px solid #1f2836;-webkit-overflow-scrolling:touch}
+  code{font-family:var(--mono);font-size:clamp(12px, 1.1vw + 10px, 14px)}
+  #logs{min-height:80px;max-height:220px}
+
+  footer{margin:calc(var(--space)*1.2) 0 .5rem;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <span class="badge">⚡ Flash Loan UI</span>
+      <span class="muted">Borrow (borrower signs) • Repay (pay owner ≥ amount)</span>
+    </div>
+    <div class="toolbar">
+      <button class="tool-btn" title="Download Datum" onclick="downloadDatum('FlashDatum.json')">⬇️</button>
+      <button class="tool-btn" title="Copy Datum" onclick="copyDatum()">📋</button>
+      <button class="tool-btn" title="Clear Logs" onclick="clearLogs()">🧹</button>
+      <button class="tool-btn" title="Refresh" onclick="refreshPage()">🔄</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Left: Params / Datum / Actions -->
+    <aside class="panel">
+      <h2>1) Params (FlashParams)</h2>
+      <div class="row">
+        <div class="grow">
+          <label>owner (PubKeyHash)</label>
+          <input id="owner" type="text" value="owner-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.6rem;">
+        <button class="btn ok grow" onclick="applyParams()">Apply Params</button>
+        <button class="btn grow" onclick="resetParams()">Reset</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>2) Datum (FlashDatum)</h2>
+      <div class="row">
+        <div class="grow">
+          <label>borrower (PubKeyHash)</label>
+          <input id="borrower" type="text" value="borrower-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>amount (lovelace)</label>
+          <input id="amount" type="number" min="0" value="5_000_000" />
+        </div>
+        <div class="grow">
+          <label>amount (ADA)</label>
+          <input id="amountAda" type="number" step="0.000001" min="0" value="5" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>3) Borrow (signer must be borrower)</h2>
+      <div class="row">
+        <div class="grow">
+          <label>borrowerSigner (PubKeyHash)</label>
+          <input id="borrowerSigner" type="text" placeholder="must equal borrower" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn primary grow" onclick="borrow()">▶ Borrow</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>4) Repay (pay owner ≥ amount)</h2>
+      <div class="row">
+        <div class="grow">
+          <label>paidToOwner (lovelace)</label>
+          <input id="paidToOwner" type="number" min="0" value="5_000_000" />
+        </div>
+        <div class="grow">
+          <label>paidToOwner (ADA)</label>
+          <input id="paidToOwnerAda" type="number" step="0.000001" min="0" value="5" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn warn grow" onclick="repay()">▶ Repay</button>
+      </div>
+
+      <p class="muted" style="font-size:.9em;margin:.6rem 0 0">
+        This UI mirrors the simplified on-chain checks: single borrower signature for Borrow, and a Value check that
+        the owner receives at least <code>amount</code> lovelace on Repay.
+      </p>
+    </aside>
+
+    <!-- Right: Snapshots & Logs -->
+    <main>
+      <div class="panel">
+        <h2>Params & Datum Snapshot</h2>
+        <pre><code id="snapshot-block">{}</code></pre>
+        <div class="row" style="margin-top:.6rem;flex-wrap:wrap;">
+          <button class="btn" onclick="downloadDatum('FlashDatum.json')">⬇️ Download</button>
+          <button class="btn" onclick="copyDatum()">📋 Copy</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Tx Payload (for off-chain)</h2>
+        <pre><code id="tx-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Math & Checks</h2>
+        <pre><code id="math-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Logs</h2>
+        <pre id="logs" aria-live="polite"></pre>
+      </div>
+    </main>
+  </div>
+
+  <footer>Responsive Flash Loan validator demo — no chain connection, pure UI logic. 💙</footer>
+</div>
+
+<script>
+  // ===== Utilities =====
+  const el = sel => document.querySelector(sel);
+  const log = msg => { const l = el('#logs'); l.textContent += msg + '\\n'; l.scrollTop = l.scrollHeight; };
+  const toAda = (lovelace) => (lovelace / 1_000_000);
+  const toLovelace = (ada) => Math.round(ada * 1_000_000);
+
+  // ===== State mirrors on-chain =====
+  let params = { owner: 'owner-0001' };
+  let datum  = { borrower: 'borrower-0001', amount: 5_000_000 };
+
+  // ===== Render snapshot =====
+  function renderSnapshot(){
+    el('#snapshot-block').textContent = JSON.stringify({ params, datum }, null, 2);
+  }
+  function renderTx(o){ el('#tx-block').textContent = JSON.stringify(o, null, 2); }
+  function renderMath(o){ el('#math-block').textContent = JSON.stringify(o, null, 2); }
+
+  // ===== Sync amount ADA <-> lovelace =====
+  el('#amount').addEventListener('input', e=>{
+    const lv = parseInt(e.target.value||'0',10);
+    el('#amountAda').value = (lv/1_000_000).toFixed(6);
+  });
+  el('#amountAda').addEventListener('input', e=>{
+    const ada = parseFloat(e.target.value||'0');
+    el('#amount').value = toLovelace(ada);
+  });
+  el('#paidToOwner').addEventListener('input', e=>{
+    const lv = parseInt(e.target.value||'0',10);
+    el('#paidToOwnerAda').value = (lv/1_000_000).toFixed(6);
+  });
+  el('#paidToOwnerAda').addEventListener('input', e=>{
+    const ada = parseFloat(e.target.value||'0');
+    el('#paidToOwner').value = toLovelace(ada);
+  });
+
+  // ===== Params =====
+  function applyParams(){
+    params.owner = el('#owner').value.trim() || params.owner;
+    renderSnapshot();
+    renderTx({ type:'ParamsApplied', params });
+    log('✅ Params applied.');
+  }
+  function resetParams(){
+    params = { owner:'owner-0001' };
+    el('#owner').value = params.owner;
+    renderSnapshot();
+    renderTx({ type:'ParamsReset', params });
+    log('Params reset to defaults.');
+  }
+
+  // ===== Datum helpers =====
+  function syncDatumFromInputs(){
+    datum.borrower = el('#borrower').value.trim() || datum.borrower;
+    datum.amount   = Math.max(0, parseInt(el('#amount').value || datum.amount, 10));
+  }
+
+  // ===== Actions =====
+  function borrow(){
+    syncDatumFromInputs();
+    const signer = el('#borrowerSigner').value.trim();
+
+    const math = {
+      signer, expectedBorrower: datum.borrower,
+      borrowerSigned: signer === datum.borrower
+    };
+    renderMath({ path:'Borrow', ...math });
+
+    if(!math.borrowerSigned){
+      log('❌ Borrower not signed');
+      return renderTx({ type:'Borrow', result:'FAIL', reason:'signature' });
+    }
+
+    renderTx({
+      type:'Borrow',
+      signer,
+      checks: { borrowerSigned: true },
+      result:'PASS'
+    });
+    log('✅ Borrow allowed (borrower signed).');
+  }
+
+  function repay(){
+    syncDatumFromInputs();
+    const paidToOwner = Math.max(0, parseInt(el('#paidToOwner').value || '0', 10));
+
+    const math = {
+      required: datum.amount,
+      paidToOwner,
+      paidAda: toAda(paidToOwner),
+      requiredAda: toAda(datum.amount),
+      repaymentOk: paidToOwner >= datum.amount
+    };
+    renderMath({ path:'Repay', ...math });
+
+    if(!math.repaymentOk){
+      log('❌ Repayment not verified (paid < amount)');
+      return renderTx({ type:'Repay', result:'FAIL', reason:'paid less than required' });
+    }
+
+    renderTx({
+      type:'Repay',
+      toOwner: { adaLovelace: paidToOwner },
+      result:'PASS'
+    });
+    log('✅ Repay allowed (owner receives at least required amount).');
+  }
+
+  // ===== Toolbar (snapshot/clipboard) =====
+  function getDatumText(){ return el('#snapshot-block').textContent || '{}'; }
+  function downloadDatum(filename='FlashDatum.json'){
+    const text = getDatumText();
+    const blob = new Blob([text], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  async function copyDatum(){
+    const text = getDatumText();
+    try{
+      if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+      else { const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      log('📋 Snapshot copied to clipboard.');
+    }catch(e){ alert('Copy failed: '+e.message); }
+  }
+  function clearLogs(){ el('#logs').textContent = ''; }
+  function refreshPage(){ window.location.reload(); }
+
+  // ===== Boot =====
+  (function boot(){
+    renderSnapshot();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Swap — Frontend UI (Plutus V2)</title>
+<style>
+  :root{
+    --bg:#ffffff;--panel:#f7f9fc;--muted:#6b7280;--text:#1f2937;--accent:#2563eb;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;--border:#e5e7eb;
+    --radius:14px;--space:clamp(10px,2vw,16px);--font:clamp(14px,1.1vw+12px,16px);
+    --mono: ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--bg:#0b0f17;--panel:#0f172a;--text:#e5e7eb;--border:#1f2836;--muted:#9aa4b2}
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font:var(--font)/1.6 var(--sans)}
+  .wrap{max-width:1200px;margin:0 auto;padding:calc(var(--space)*1.5) var(--space)}
+  header{display:flex;gap:var(--space);align-items:center;justify-content:space-between;margin-bottom:var(--space)}
+  .title{display:flex;gap:.6rem;align-items:center;font-weight:800;flex-wrap:wrap}
+  .badge{display:inline-flex;gap:.5rem;align-items:center;background:linear-gradient(135deg,#60a5fa,#a78bfa);padding:.35rem .7rem;border-radius:999px;color:#0b1020;font-weight:800}
+  .muted{color:var(--muted);font-weight:600}
+  .grid{display:grid;gap:var(--space);grid-template-columns:1fr}
+  @media(min-width:900px){.grid{grid-template-columns:minmax(340px,420px) 1fr}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:var(--space)}
+  h2{margin:.25rem 0 .6rem;font-size:clamp(1.05rem,1.6vw,1.2rem)}
+  h3{margin:.6rem 0 .4rem;font-size:clamp(1rem,1.4vw,1.05rem)}
+  label{font-size:.92em;color:var(--muted)}
+  input[type="text"],input[type="number"],select,textarea{
+    width:100%;padding:.65rem .75rem;border:1px solid var(--border);border-radius:10px;background:#fff;color:#111827;font:inherit
+  }
+  @media (prefers-color-scheme: dark){
+    input,select,textarea{background:#0b1220;color:var(--text)}
+  }
+  .row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+  .row>.grow{flex:1}
+  .divider{height:1px;background:var(--border);margin:.7rem 0}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid var(--border);background:#fff;color:#111827;border-radius:10px;padding:.55rem .9rem;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04);font-weight:700}
+  .btn:hover{background:#f6f7fb}
+  .btn:active{transform:translateY(1px)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
+  .btn.ok{background:var(--ok);color:#fff;border-color:transparent}
+  .btn.warn{background:var(--warn);color:#fff;border-color:transparent}
+  .btn.err{background:var(--err);color:#fff;border-color:transparent}
+
+  .toolbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .tool-btn{display:inline-flex;align-items:center;justify-content:center;width:clamp(36px,6vw,40px);height:clamp(36px,6vw,40px);border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:clamp(16px,3.5vw,18px);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .tool-btn:hover{background:#f6f7fb}
+
+  pre{background:#0f172a;color:#e5e7eb;border-radius:12px;padding:12px;overflow:auto;border:1px solid #1f2836;-webkit-overflow-scrolling:touch}
+  code{font-family:var(--mono);font-size:clamp(12px,1.1vw+10px,14px)}
+  #logs{min-height:80px;max-height:220px}
+  .nft-list{display:grid;gap:.5rem}
+  .nft-item{display:flex;gap:.5rem;align-items:center}
+  .nft-item input{flex:1}
+  .pill{display:inline-flex;gap:.35rem;align-items:center;border:1px solid var(--border);border-radius:999px;padding:.25rem .6rem;background:#fff}
+  footer{margin:calc(var(--space)*1.2) 0 .5rem;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">
+      <span class="badge">🔁 Swap UI</span>
+      <span class="muted">Seller paid in token • Buyer receives all NFTs • Both sign • Not expired</span>
+    </div>
+    <div class="toolbar">
+      <button class="tool-btn" title="Download Params" onclick="downloadJSON('SwapParams.json', buildParams())">⬇️</button>
+      <button class="tool-btn" title="Copy Params" onclick="copyJSON(buildParams())">📋</button>
+      <button class="tool-btn" title="Clear Logs" onclick="clearLogs()">🧹</button>
+      <button class="tool-btn" title="Refresh" onclick="location.reload()">🔄</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Left: Params & Tx Inputs -->
+    <aside class="panel">
+      <h2>1) Swap Params</h2>
+      <div class="row">
+        <div class="grow">
+          <label>spSeller (PubKeyHash)</label>
+          <input id="spSeller" type="text" value="seller-0001" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>spBuyer (PubKeyHash)</label>
+          <input id="spBuyer" type="text" value="buyer-0001" />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>Payment Token CS</label>
+          <input id="spTokenCS" type="text" value="policyPAY" />
+        </div>
+        <div class="grow">
+          <label>Payment Token TN</label>
+          <input id="spTokenTN" type="text" value="PAY" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem;">
+        <div class="grow">
+          <label>spPrice (units of Payment Token)</label>
+          <input id="spPrice" type="number" min="0" value="100" />
+        </div>
+        <div class="grow">
+          <label>spExpiry (POSIX ms, 0 = no expiry)</label>
+          <input id="spExpiry" type="number" min="0" value="" />
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <h3>1.1 NFTs (spNFTs)</h3>
+      <div id="nftList" class="nft-list"></div>
+      <div class="row" style="margin-top:.5rem;">
+        <button class="btn" onclick="addNFT()">+ Add NFT (CS, TN)</button>
+        <button class="btn" onclick="clearNFTs()">Clear</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <h2>2) Tx Simulation Inputs</h2>
+      <h3>2.1 Signatures</h3>
+      <div class="row">
+        <label><input id="sigSeller" type="checkbox" /> Signed by Seller</label>
+        <label><input id="sigBuyer" type="checkbox" /> Signed by Buyer</label>
+      </div>
+
+      <h3 style="margin-top:.5rem;">2.2 Payment to Seller</h3>
+      <div class="row">
+        <div class="grow">
+          <label>paidToSeller (amount in Payment Token)</label>
+          <input id="paidToSeller" type="number" min="0" value="100" />
+        </div>
+      </div>
+
+      <h3 style="margin-top:.5rem;">2.3 Outputs to Buyer (NFT receipts)</h3>
+      <p class="muted" style="margin:.2rem 0 .6rem">For each NFT (cs,tn) listed above, specify how many go to buyer (≥1).</p>
+      <div id="nftOutList" class="nft-list"></div>
+
+      <h3 style="margin-top:.5rem;">2.4 Time</h3>
+      <div class="row">
+        <div class="grow">
+          <label>now (POSIX ms)</label>
+          <input id="now" type="number" />
+        </div>
+        <button class="btn" onclick="setNow()">Set Now = System Time</button>
+        <button class="btn" onclick="setExpiryInDays(2)">Expiry +2d</button>
+        <button class="btn" onclick="setExpiryInDays(0)">Expiry = now</button>
+      </div>
+
+      <div class="divider"></div>
+      <div class="row">
+        <button class="btn primary grow" onclick="checkSwap()">▶ Validate Swap</button>
+      </div>
+    </aside>
+
+    <!-- Right: Snapshots & Logs -->
+    <main>
+      <div class="panel">
+        <h2>Params Snapshot</h2>
+        <pre><code id="params-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Tx Payload (for off-chain)</h2>
+        <pre><code id="tx-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Checks</h2>
+        <pre><code id="checks-block">{}</code></pre>
+      </div>
+
+      <div class="panel">
+        <h2>Logs</h2>
+        <pre id="logs" aria-live="polite"></pre>
+        <div class="row" style="margin-top:.6rem;flex-wrap:wrap;">
+          <button class="btn" onclick="downloadJSON('SwapParams.json', buildParams())">⬇️ Download</button>
+          <button class="btn" onclick="copyJSON(buildParams())">📋 Copy</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer>Responsive Swap validator demo — no chain connection, pure UI logic. 💙</footer>
+</div>
+
+<script>
+  // ---------- Utilities ----------
+  const el = s => document.querySelector(s);
+  const els = s => Array.from(document.querySelectorAll(s));
+  const log = m => { const L = el('#logs'); L.textContent += m + '\\n'; L.scrollTop = L.scrollHeight; };
+  const j = o => JSON.stringify(o, null, 2);
+
+  function setNow(){ el('#now').value = Date.now(); }
+  function setExpiryInDays(d){
+    const cur = parseInt(el('#spExpiry').value||Date.now(),10);
+    const base = isNaN(cur)||cur===0 ? Date.now() : cur;
+    el('#spExpiry').value = d===0 ? Date.now() : (base + d*24*60*60*1000);
+    renderParams();
+  }
+
+  function downloadJSON(filename, obj){
+    const blob = new Blob([j(obj)], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+  async function copyJSON(obj){
+    const text = j(obj);
+    try{
+      if(navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+      else { const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+      log('📋 Copied JSON to clipboard.');
+    }catch(e){ alert('Copy failed: '+e.message); }
+  }
+  function clearLogs(){ el('#logs').textContent=''; }
+
+  // ---------- NFT list UI ----------
+  function addNFT(cs='policyNFT', tn='MyNFT'){
+    const id = crypto.randomUUID().slice(0,8);
+    const row = document.createElement('div');
+    row.className = 'nft-item';
+    row.dataset.id = id;
+    row.innerHTML = `
+      <input class="nft-cs" type="text" placeholder="CurrencySymbol" value="${cs}"/>
+      <input class="nft-tn" type="text" placeholder="TokenName" value="${tn}"/>
+      <button class="btn err" onclick="this.parentElement.remove(); syncNftOutputs()">✖</button>
+    `;
+    el('#nftList').appendChild(row);
+    syncNftOutputs();
+    renderParams();
+  }
+  function clearNFTs(){
+    el('#nftList').innerHTML='';
+    el('#nftOutList').innerHTML='';
+    renderParams();
+  }
+  function readNFTs(){
+    return els('#nftList .nft-item').map(n=>{
+      const cs = n.querySelector('.nft-cs').value.trim();
+      const tn = n.querySelector('.nft-tn').value.trim();
+      return [cs, tn];
+    }).filter(([cs,tn])=>cs&&tn);
+  }
+
+  function syncNftOutputs(){
+    const list = readNFTs();
+    const outWrap = el('#nftOutList');
+    outWrap.innerHTML = '';
+    list.forEach(([cs,tn])=>{
+      const row = document.createElement('div');
+      row.className = 'nft-item';
+      row.innerHTML = `
+        <span class="pill">${cs}.${tn}</span>
+        <input class="nft-out-qty" data-cs="${cs}" data-tn="${tn}" type="number" min="0" value="1" />
+      `;
+      outWrap.appendChild(row);
+    });
+  }
+
+  // ---------- Params ----------
+  function buildParams(){
+    const spSeller = el('#spSeller').value.trim();
+    const spBuyer  = el('#spBuyer').value.trim();
+    const spTokenCS= el('#spTokenCS').value.trim();
+    const spTokenTN= el('#spTokenTN').value.trim();
+    const spPrice  = Math.max(0, parseInt(el('#spPrice').value||'0',10));
+    const spExpiry = Math.max(0, parseInt(el('#spExpiry').value||'0',10));
+    const spNFTs   = readNFTs();
+    return { spSeller, spBuyer, spNFTs, spTokenCS, spTokenTN, spPrice, spExpiry };
+  }
+  function renderParams(){ el('#params-block').textContent = j(buildParams()); }
+
+  // ---------- Checks (mirror on-chain) ----------
+  function notExpired(now, expiry){ return expiry===0 || now <= expiry; }
+  function bothSigned(){ return el('#sigBuyer').checked && el('#sigSeller').checked; }
+  function sellerPaid(params, paidAmt){
+    // payment in AssetClass(spTokenCS, spTokenTN)
+    return paidAmt >= params.spPrice;
+  }
+  function buyerGetsAllNFTs(params){
+    const needed = params.spNFTs;
+    // For each needed (cs,tn), require buyer receives >=1
+    const outs = els('.nft-out-qty').map(i=>({cs:i.dataset.cs, tn:i.dataset.tn, qty:Math.max(0,parseInt(i.value||'0',10))}));
+    return needed.every(([cs,tn])=> outs.some(o=>o.cs===cs && o.tn===tn && o.qty>=1));
+  }
+
+  // ---------- Validate ----------
+  function checkSwap(){
+    const params = buildParams();
+    const paidToSeller = Math.max(0, parseInt(el('#paidToSeller').value||'0',10));
+    const now = parseInt(el('#now').value || Date.now(), 10);
+
+    const checks = {
+      notExpired: notExpired(now, params.spExpiry),
+      bothSigned: bothSigned(),
+      sellerPaid: sellerPaid(params, paidToSeller),
+      buyerGetsNFTs: buyerGetsAllNFTs(params),
+      now,
+      paymentAsset: `${params.spTokenCS}.${params.spTokenTN}`,
+      paidToSeller
+    };
+    el('#checks-block').textContent = j(checks);
+
+    if(!checks.notExpired){ log('❌ Swap expired'); return renderTx(params, checks, 'FAIL', 'expired'); }
+    if(!checks.bothSigned){ log('❌ Not signed by both parties'); return renderTx(params, checks, 'FAIL', 'signatures'); }
+    if(!checks.sellerPaid){ log('❌ Seller not paid correctly'); return renderTx(params, checks, 'FAIL', 'payment'); }
+    if(!checks.buyerGetsNFTs){ log('❌ Buyer did not receive all NFTs'); return renderTx(params, checks, 'FAIL', 'nfts'); }
+
+    log('✅ Swap is valid under current inputs.');
+    return renderTx(params, checks, 'PASS');
+  }
+
+  // ---------- Render TX ----------
+  function renderTx(params, checks, result, reason){
+    const outputs = {
+      toSeller: { [params.spTokenCS + '.' + params.spTokenTN]: checks.paidToSeller },
+      toBuyer: Object.fromEntries(params.spNFTs.map(([cs,tn])=>[cs+'.'+tn, 1]))
+    };
+    const tx = { type:'Swap', params, checks, outputs, result, reason };
+    el('#tx-block').textContent = j(tx);
+    return tx;
+  }
+
+  // ---------- Boot ----------
+  (function boot(){
+    setNow();
+    // default expiry +2d, add 2 sample NFTs
+    setExpiryInDays(2);
+    addNFT('policyNFT','Cool1');
+    addNFT('policyNFT','Cool2');
+    renderParams();
+  })();
+</script>
+</body>
+</html>

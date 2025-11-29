@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>🧩 Universal Plutus Validator Template — A Complete Guide</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      /* Light gray theme */
+      --bg:#f5f7fa;            /* page background */
+      --panel:#ffffff;         /* cards/panels */
+      --ink:#111827;           /* primary text */
+      --muted:#6b7280;         /* secondary text */
+      --accent:#2563eb;        /* links & accents */
+      --code-bg:#f8fafc;       /* code block bg */
+      --code-border:#e5e7eb;   /* code block border */
+      --kbd:#eef2f7;           /* inline code bg */
+      --panel-border:#e6e8ee;  /* card border */
+      --rule:#e5e7eb;          /* hr */
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji";}
+    main{max-width:980px;margin:40px auto;padding:0 20px;}
+    h1{font-size:2rem;line-height:1.2;margin:0 0 10px;}
+    h2{font-size:1.5rem;margin:32px 0 8px;}
+    h3{font-size:1.15rem;margin:24px 0 6px;color:#1f2937;}
+    p{margin:10px 0;}
+    ul,ol{margin:8px 0 16px 22px;}
+    code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;}
+    code{background:var(--kbd);padding:.15em .35em;border-radius:6px;}
+    pre{background:var(--code-bg);border:1px solid var(--code-border);border-radius:12px;padding:14px;overflow:auto;}
+    pre code{background:none;padding:0;}
+    a{color:var(--accent);text-decoration:none;}
+    a:hover{text-decoration:underline;}
+    .lead{color:var(--muted);margin-top:6px}
+    .toc a{display:block;padding:6px 0;color:var(--ink)}
+    .toc a:hover{color:var(--accent)}
+    .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:18px;margin:18px 0;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+    .badge{display:inline-block;background:#e8f1ff;color:#1e3a8a;border:1px solid #c7ddff;padding:2px 8px;border-radius:999px;font-size:.8rem;margin-left:.5rem;vertical-align:middle}
+    hr{border:none;height:1px;background:var(--rule);margin:28px 0;}
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>🧩 Universal Plutus Validator Template — A Complete Guide</h1>
+      <p class="lead">Build validators and minting policies by composing declarative rules on Plutus V2.</p>
+    </header>
+
+    <section class="toc card" id="toc">
+      <h2>📑 Table of Contents</h2>
+      <ol>
+        <li><a href="#sec-1">🔭 Overview</a></li>
+        <li><a href="#sec-2">🧱 Core Concepts (Params, Rule, Specs)</a></li>
+        <li><a href="#sec-3">🧠 Design Goals &amp; Guarantees</a></li>
+        <li><a href="#sec-4">🛠️ Module Walkthrough (numbered, with code)</a></li>
+        <li><a href="#sec-5">🧪 Quick Start: Lock-by-Deadline &amp; Beneficiary</a></li>
+        <li><a href="#sec-6">🧰 Collectors: Reusing Datums/Redeemers (0..n)</a></li>
+        <li><a href="#sec-7">🧮 Writing Rules: What’s Included &amp; How to Extend</a></li>
+        <li><a href="#sec-8">🧵 Wiring: Compiling to a Validator / Policy</a></li>
+        <li><a href="#sec-9">🧾 Serialization: Raw CBOR &amp; Text Envelope</a></li>
+        <li><a href="#sec-10">🧯 Troubleshooting &amp; Pitfalls</a></li>
+        <li><a href="#sec-11">🧭 Version Notes (Plutus V2 + Template Haskell)</a></li>
+        <li><a href="#sec-12">📚 Glossary of Terms</a></li>
+      </ol>
+    </section>
+    <section id="sec-1">
+      <h2>1) 🔭 Overview</h2>
+      <p><strong>What it is:</strong> A universal, reusable <strong>rules engine</strong> for Plutus V2.</p>
+      <p><strong>What it does:</strong> Turns a <strong>bag of declarative checks</strong> (e.g., “signed by Alice”, “after deadline”, “no mint”) into a <strong>validator</strong> or <strong>minting policy</strong>.</p>
+      <p><strong>Why it helps:</strong></p>
+      <ul>
+        <li>You can <strong>plug different rules</strong> together without re-writing low-level script logic.</li>
+        <li>Supports <strong>0..n parameters</strong>, <strong>0..n datums</strong>, <strong>0..n redeemers</strong>, and <strong>always</strong> requires a <code>ScriptContext</code>.</li>
+        <li>Works cleanly with <strong>NoImplicitPrelude</strong> and your <strong>V2 Ledger</strong> stack.</li>
+      </ul>
+    </section>
+
+    <section id="sec-2">
+      <h2>2) 🧱 Core Concepts</h2>
+
+      <h3>2.1 <code>Cmp</code> (comparison over integers)</h3>
+      <pre><code class="language-haskell">data Cmp = EQI Integer | GE Integer | LE Integer | BETWEEN Integer Integer</code></pre>
+      <p>Used by rules that compare on-chain integer amounts (e.g., minted amounts).</p>
+
+      <h3>2.2 <code>Rule</code></h3>
+      <pre><code class="language-haskell">data Rule
+  = RequireAnySigner [PubKeyHash]
+  | ValidAfter POSIXTime
+  | ValidWithin POSIXTime POSIXTime
+  | PreserveValueOneContinuing
+  | NoMint
+  | SameScriptContinuing
+  | MintAmount CurrencySymbol TokenName Cmp   -- (stubbed in the baseline)
+  | Pass
+</code></pre>
+      <p>Each rule is <strong>serializable</strong> (via <code>makeIsDataIndexed</code>) and <strong>pure on-chain</strong>.</p>
+
+      <h3>2.3 Specs &amp; Params</h3>
+      <pre><code class="language-haskell">newtype SpendingSpec = SpendingSpec { spendingRules :: [Rule] }
+newtype MintingSpec  = MintingSpec  { mintingRules  :: [Rule] }
+
+data Params = Params
+  { sSpec :: SpendingSpec
+  , mSpec :: MintingSpec
+  , extra :: [BuiltinData]   -- 0..n “param datums” you can decode as needed
+  }
+</code></pre>
+    </section>
+
+    <section id="sec-3">
+      <h2>3) 🧠 Design Goals &amp; Guarantees</h2>
+      <ul>
+        <li><strong>Declarative</strong>: Express behavior as data (<code>Rule</code>) — easy to audit, test, and reuse.</li>
+        <li><strong>Universal</strong>: Works for <strong>any</strong> spending or minting use case by composing rules.</li>
+        <li><strong>Expandable</strong>: Add your own rules without touching the engine.</li>
+        <li><strong>Stable Imports</strong>: Mirrors your working vesting modules; avoids version traps (e.g., <code>flattenValue</code> differences).</li>
+        <li><strong>No Hidden Off-chain Logic</strong>: All real checks live in on-chain code.</li>
+      </ul>
+    </section>
+
+    <section id="sec-4">
+      <h2>4) 🛠️ Module Walkthrough</h2>
+
+      <h3>4.1 Type-level Plumbing &amp; TH Derives ✅</h3>
+      <ul>
+        <li>Use <code>PlutusTx.makeIsDataIndexed</code> for <strong>on-chain data</strong> serialization.</li>
+        <li>Use <code>PlutusTx.makeLift</code> so <code>Params</code> (and friends) can be <strong>embedded</strong> with <code>liftCode</code>.</li>
+      </ul>
+      <pre><code class="language-haskell">PlutusTx.makeIsDataIndexed ''Cmp   [ ('EQI,0),('GE,1),('LE,2),('BETWEEN,3) ]
+PlutusTx.makeLift ''Cmp
+-- … same for Rule, SpendingSpec, MintingSpec, Params
+</code></pre>
+      <p><strong>Why:</strong> <code>liftCode p</code> (where <code>p :: Params</code>) needs <code>Lift</code> instances.</p>
+
+      <h3>4.2 Small Stdlib Helpers 🧰</h3>
+      <pre><code class="language-haskell">{-# INLINABLE allChecks #-}
+allChecks :: [Bool] -&gt; Bool
+allChecks = foldr (&amp;&amp;) True
+
+{-# INLINABLE anyP #-}
+anyP :: (a -&gt; Bool) -&gt; [a] -&gt; Bool
+anyP p = foldr (\x acc -&gt; p x || acc) False
+</code></pre>
+
+      <h3>4.3 Collectors: 0..n Datums/Redeemers 🧲</h3>
+      <pre><code class="language-haskell">collectDatumsOf    :: forall d. FromData d    =&gt; ScriptContext -&gt; [d]
+collectRedeemersOf :: forall r. FromData r    =&gt; ScriptContext -&gt; [r]
+</code></pre>
+      <ul>
+        <li>Implemented via <code>txInfoData</code> / <code>txInfoRedeemers</code> and <code>AssocMap.toList + fromBuiltinData</code>.</li>
+        <li>Lets you <strong>safely</strong> decode multiple typed datums/redeemers.</li>
+      </ul>
+
+      <h3>4.4 Spending Helpers 🧷</h3>
+      <pre><code class="language-haskell">ownInput :: ScriptContext -&gt; TxOut
+continuingOutExactlyOne :: ScriptContext -&gt; TxOut
+</code></pre>
+      <ul>
+        <li>Encapsulate boilerplate for “find own input” and “exactly one continuing output”.</li>
+      </ul>
+
+      <h3>4.5 Evaluating Rules 🧮</h3>
+      <pre><code class="language-haskell">evalRule :: Rule -&gt; ScriptContext -&gt; Bool
+</code></pre>
+      <p>Implements all built-in rules with clear failure traces:</p>
+      <ul>
+        <li><code>RequireAnySigner</code> — checks <code>txSignedBy info</code>.</li>
+        <li><code>ValidAfter</code> / <code>ValidWithin</code> — checks the <strong>valid range</strong> via <code>contains</code>, <code>from</code>, and <code>interval</code>.</li>
+        <li><code>PreserveValueOneContinuing</code> — checks script value continuity.</li>
+        <li><code>NoMint</code> — checks <code>txInfoMint == mempty</code>.</li>
+        <li><code>SameScriptContinuing</code> — ensures continuing output uses the <strong>same</strong> script hash.</li>
+        <li><code>MintAmount</code> — <strong>stubbed</strong> in baseline; see §7.3 to implement for your version.</li>
+        <li><code>Pass</code> — always <code>True</code> (useful placeholder).</li>
+      </ul>
+
+      <h3>4.6 Applying Many Rules at Once 🧪</h3>
+      <pre><code class="language-haskell">validateRules :: [Rule] -&gt; ScriptContext -&gt; Bool
+validateRules rules ctx = allChecks (map (\r -&gt; evalRule r ctx) rules)
+</code></pre>
+
+      <h3>4.7 Wrappers: Build Validator / Policy 🧵</h3>
+      <pre><code class="language-haskell">mkSpendingValidator :: Params -&gt; Validator
+mkMintingPolicy     :: Params -&gt; MintingPolicy
+</code></pre>
+      <ul>
+        <li><strong>Inlines</strong> a lambda that captures <code>Params</code> via <code>liftCode</code>.</li>
+        <li>Ensures the <strong>spending</strong> path only runs <code>sSpec</code> rules, <strong>policy</strong> only runs <code>mSpec</code>.</li>
+      </ul>
+    </section>
+
+    <section id="sec-5">
+      <h2>5) 🧪 Quick Start: Lock-by-Deadline &amp; Beneficiary</h2>
+      <p>Goal: Spend only if <strong>signed</strong> by <code>beneficiary</code> <strong>after</strong> <code>deadline</code>.</p>
+      <pre><code class="language-haskell">mkLockByDeadlineParams :: PubKeyHash -&gt; POSIXTime -&gt; Params
+mkLockByDeadlineParams beneficiaryPKH deadline =
+  let spendingRules =
+        [ RequireAnySigner [beneficiaryPKH]
+        , ValidAfter deadline
+        ]
+  in Params
+      { sSpec = SpendingSpec spendingRules
+      , mSpec = MintingSpec []   -- no mint rules
+      , extra = []               -- free param slots if you need them
+      }
+
+mkLockByDeadlineValidator :: PubKeyHash -&gt; POSIXTime -&gt; Validator
+mkLockByDeadlineValidator pkh dl =
+  mkSpendingValidator (mkLockByDeadlineParams pkh dl)
+</code></pre>
+      <p><strong>Notes:</strong></p>
+      <ul>
+        <li><code>POSIXTime</code> in Plutus is <strong>milliseconds</strong> since epoch. Convert seconds → <code>* 1000</code>.</li>
+        <li><code>RequireAnySigner [pkh]</code> accepts <strong>any</strong> signer in the list; pass multiple PKHs to accept a team.</li>
+      </ul>
+    </section>
+
+    <section id="sec-6">
+      <h2>6) 🧰 Collectors: Reusing Datums/Redeemers (0..n)</h2>
+      <p>When your contracts pass rich, typed data around, read them in bulk:</p>
+      <pre><code class="language-haskell">{-# INLINABLE collectDatumsOf #-}
+collectDatumsOf :: forall d. PlutusTx.FromData d =&gt; ScriptContext -&gt; [d]
+-- decode all datum bodies that successfully parse as `d`
+
+{-# INLINABLE collectRedeemersOf #-}
+collectRedeemersOf :: forall r. PlutusTx.FromData r =&gt; ScriptContext -&gt; [r]
+-- decode all redeemer bodies that successfully parse as `r`
+</code></pre>
+      <p><strong>Use cases:</strong></p>
+      <ul>
+        <li>Multiple bids/orders as datums on inputs.</li>
+        <li>Multiple action redeemers (e.g., <code>Bid</code>, <code>Cancel</code>, <code>Close</code>) present in a tx.</li>
+        <li>Parametrization via <code>extra :: [BuiltinData]</code> in <code>Params</code>.</li>
+      </ul>
+    </section>
+
+    <section id="sec-7">
+      <h2>7) 🧮 Writing Rules</h2>
+
+      <h3>7.1 Ready-to-use Rules ✅</h3>
+      <ul>
+        <li><strong>Signers</strong>: <code>RequireAnySigner [PubKeyHash]</code></li>
+        <li><strong>Validity range</strong>: <code>ValidAfter t</code>, <code>ValidWithin start delta</code></li>
+        <li><strong>Value continuity</strong>: <code>PreserveValueOneContinuing</code></li>
+        <li><strong>Mint restrictions</strong>: <code>NoMint</code></li>
+        <li><strong>Same script hash</strong>: <code>SameScriptContinuing</code></li>
+        <li><strong>No-op</strong>: <code>Pass</code></li>
+      </ul>
+
+      <h3>7.2 Add Your Own Rule 🧱</h3>
+      <ol>
+        <li>Extend the <code>Rule</code> data type (add your constructor).</li>
+        <li>Extend the <code>makeIsDataIndexed</code> mapping.</li>
+        <li>Extend <code>evalRule</code> with your logic — keep <code>traceIfFalse</code> labels concise.</li>
+      </ol>
+      <p>Example: require <strong>exactly one</strong> signer from a set:</p>
+      <pre><code class="language-haskell">-- 1) data Rule = ... | RequireExactlyOneSigner [PubKeyHash]
+-- 2) assign a new index in makeIsDataIndexed
+-- 3) extend evalRule:
+RequireExactlyOneSigner pks -&gt;
+  let sigs = txInfoSignatories info
+      n    = length (filter (\pk -&gt; anyP (== pk) sigs) pks)
+  in traceIfFalse "ExactlyOneSigner" (n == 1)
+</code></pre>
+
+      <h3>7.3 Implementing <code>MintAmount</code> (when you’re ready) 🪙</h3>
+      <p>Some Plutus snapshots differ in how to inspect <code>txInfoMint</code>. If <code>flattenValue</code> isn’t available in your environment, you can:</p>
+      <ul>
+        <li>use <code>Ledger.Value.valueOf</code> if present in your stack, or</li>
+        <li>roll your own <code>AssocMap</code> walker (depends on your exact value representation).</li>
+      </ul>
+      <p>Keep it <strong>stubbed</strong> until you need it; your spending examples (like lock-by-deadline) don’t depend on it.</p>
+    </section>
+
+    <section id="sec-8">
+      <h2>8) 🧵 Wiring: Compiling Scripts</h2>
+      <p>The template uses the <strong>inline-lambda + <code>liftCode</code></strong> pattern:</p>
+      <pre><code class="language-haskell">mkSpendingValidator p =
+  let wrapped = $$(compile [||
+        \p' _datum _redeemer ctx -&gt;
+          let ctx'  = unsafeFromBuiltinData ctx
+              rules = unpackSpendingRules p'
+          in if validateRules rules ctx' then () else traceError "validation failed"
+        ||]) `applyCode` liftCode p
+  in mkValidatorScript wrapped
+</code></pre>
+      <p><strong>Why this pattern:</strong> closures can’t cross the on-chain boundary, but <strong>values</strong> with <code>Lift</code> instances can (via <code>liftCode</code>). This captures your <code>Params</code> <strong>at compile time</strong> in the script.</p>
+    </section>
+
+    <section id="sec-9">
+      <h2>9) 🧾 Serialization: Raw CBOR &amp; Text Envelope</h2>
+      <p>You already have two styles:</p>
+
+      <p><strong>Raw CBOR</strong> (lazy bytestring):</p>
+      <pre><code class="language-haskell">serialiseToCBOR :: Validator -&gt; LBS.ByteString
+writeValidatorCBOR :: FilePath -&gt; Validator -&gt; IO ()
+</code></pre>
+
+      <p><strong>Cardano CLI text envelope</strong>:</p>
+      <pre><code class="language-json">{
+  "type": "PlutusScriptV2",
+  "description": "",
+  "cborHex": "&lt;hex&gt;"
+}
+</code></pre>
+      <p>Use your <code>writeValidatorEnvelope</code> helper to produce this JSON for <code>cardano-cli</code>.</p>
+
+      <div class="card">
+        <strong>CLI tip:</strong> If you need a <em>script address</em> to lock ADA:
+        <ul>
+          <li>Derive it from the validator hash and network tag (testnet/mainnet) in your off-chain code or utilities module.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="sec-10">
+      <h2>10) 🧯 Troubleshooting &amp; Pitfalls</h2>
+      <ul>
+        <li><strong>Duplicate instances / types</strong><span class="badge">common</span><br/>Ensure each <code>data</code> and each <code>makeIsDataIndexed/makeLift</code> runs <strong>once</strong> per type.</li>
+        <li><strong><code>deriveLift</code> vs <code>makeLift</code></strong><br/>Your stack uses <code>makeLift</code>. Don’t import <code>deriveLift</code>.</li>
+        <li><strong><code>POSIXTime</code> units</strong><br/>Must be <strong>milliseconds</strong>. Convert seconds → <code>* 1000</code>.</li>
+        <li><strong><code>NoImplicitPrelude</code></strong><br/>If you use <code>(.)</code>, <code>Right/Left</code>, <code>String</code>, <code>IO</code>, <code>FilePath</code>, import them from <code>Prelude</code> explicitly.</li>
+        <li><strong>AssocMap vs list</strong><br/>Use <code>PlutusTx.AssocMap.toList</code> to iterate <code>txInfoData</code> / <code>txInfoRedeemers</code>.</li>
+        <li><strong><code>flattenValue</code> missing</strong><br/>Leave <code>MintAmount</code> stubbed until you implement a version compatible with your value representation.</li>
+      </ul>
+    </section>
+
+    <section id="sec-11">
+      <h2>11) 🧭 Version Notes (Plutus V2 + Template Haskell)</h2>
+      <ul>
+        <li>GHC <strong>8.10.7</strong></li>
+        <li><code>Plutus.V2.Ledger.Api</code></li>
+        <li>Template Haskell with <strong><code>makeIsDataIndexed</code></strong> and <strong><code>makeLift</code></strong></li>
+        <li>Context helpers from <strong><code>Plutus.V2.Ledger.Contexts</code></strong></li>
+      </ul>
+      <p>The import style mirrors your <strong>Vesting</strong> modules to avoid “does not export” errors across snapshots.</p>
+    </section>
+
+    <section id="sec-12">
+      <h2>12) 📚 Glossary of Terms</h2>
+      <ul>
+        <li><strong>Validator</strong>: On-chain script that governs <strong>spending</strong> from a script address.</li>
+        <li><strong>Minting Policy</strong>: On-chain script that governs <strong>minting/burning</strong> of tokens.</li>
+        <li><strong>Params</strong>: The <strong>configuration</strong> captured into the script at compile time (rules + extra data).</li>
+        <li><strong>Rule</strong>: A <strong>declarative check</strong> (e.g., signer, time, continuing value) the engine evaluates.</li>
+        <li><strong>Datum / Redeemer</strong>: User-provided <strong>data</strong> attached to outputs (datum) or inputs/actions (redeemer).</li>
+        <li><strong>ScriptContext</strong>: Full transaction context available to the script at validation time.</li>
+        <li><strong>Continuing Output</strong>: Output that <strong>remains at the same script</strong> after spending (state transition).</li>
+        <li><strong>AssocMap</strong>: On-chain associative map type used in transaction info fields.</li>
+        <li><strong>Lift</strong>: Template Haskell mechanism to <strong>embed Haskell values</strong> inside compiled Plutus Core.</li>
+        <li><strong>CBOR / Text Envelope</strong>: Binary form of your script and a JSON wrapper recognized by <code>cardano-cli</code>.</li>
+      </ul>
+    </section>
+
+    <hr />
+    <footer class="lead">© Universal Plutus Template — generated HTML</footer>
+  </main>
+</body>
+</html>
