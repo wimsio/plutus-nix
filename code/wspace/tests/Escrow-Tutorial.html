@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NFT Escrow Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .function {
+      background: #f0f7ff;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .action {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .diagram {
+      background: #f8f8f8;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .state-machine {
+      background: #fff;
+      border: 2px solid #002b45;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .state {
+      background: #002b45;
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🔄 NFT Escrow Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the NFT Escrow smart contract, which implements a secure, trust-minimized marketplace for NFT transactions. The contract enables atomic swaps where NFTs and payment are exchanged simultaneously, eliminating counterparty risk in peer-to-peer NFT trades.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-redeemer-actions">🎯 Redeemer Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#7-escrow-workflow">🔄 Escrow Workflow</a></li>
+    <li><a href="#8-state-transitions">📊 State Transitions</a></li>
+    <li><a href="#9-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#10-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#11-security-considerations">⚠️ Security Considerations</a></li>
+    <li><a href="#12-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The NFT Escrow smart contract implements a secure marketplace mechanism that:</p>
+
+  <ul>
+    <li><strong>Enables atomic swaps</strong> between NFTs and ADA payments</li>
+    <li><strong>Eliminates counterparty risk</strong> through simultaneous exchange</li>
+    <li><strong>Provides time-bound protection</strong> with refund deadlines</li>
+    <li><strong>Supports any NFT standard</strong> through flexible token identification</li>
+    <li><strong>Ensures authorization</strong> through cryptographic signatures</li>
+  </ul>
+
+  <div class="note">
+    <strong>Marketplace Solution:</strong> This contract solves the fundamental problem in peer-to-peer NFT trading where one party has to trust the other to complete their side of the deal. With escrow, both assets are locked and released simultaneously.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>POSIXTime</code>, <code>CurrencySymbol</code>, <code>TokenName</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>, <code>findOwnInput</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations for deadline checking</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: Token value operations (<code>valueOf</code>, <code>adaSymbol</code>, <code>adaToken</code>)</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>EscrowDatum</code></h3>
+  <p>Stores all escrow transaction parameters:</p>
+  <ul>
+    <li><strong>edBuyer</strong>: Public key hash of the buyer purchasing the NFT</li>
+    <li><strong>edSeller</strong>: Public key hash of the seller offering the NFT</li>
+    <li><strong>edAmount</strong>: Purchase price in lovelace (1 ADA = 1,000,000 lovelace)</li>
+    <li><strong>edDeadline</strong>: POSIX timestamp when refund becomes available</li>
+    <li><strong>edCurrency</strong>: Currency symbol of the NFT policy</li>
+    <li><strong>edToken</strong>: Token name of the specific NFT</li>
+  </ul>
+
+  <pre><code>data EscrowDatum = EscrowDatum
+    { edBuyer    :: PubKeyHash
+    , edSeller   :: PubKeyHash
+    , edAmount   :: Integer
+    , edDeadline :: POSIXTime
+    , edCurrency :: CurrencySymbol
+    , edToken    :: TokenName
+    }</code></pre>
+
+  <h3>NFT Identification</h3>
+  <p>The contract supports any NFT standard through the currency-token pair:</p>
+  <table>
+    <tr><th>Component</th><th>Purpose</th><th>Example</th></tr>
+    <tr><td>CurrencySymbol</td><td>NFT policy ID/minting script hash</td><td>"a1b2c3..." (56 chars)</td></tr>
+    <tr><td>TokenName</td><td>Specific token identifier within policy</td><td>"MyNFT#123" or hex</td></tr>
+  </table>
+
+  <h2 id="4-redeemer-actions">4. 🎯 Redeemer Actions</h2>
+
+  <h3><code>EscrowAction</code></h3>
+  <p>Defines the two possible outcomes for an escrow transaction:</p>
+
+  <div class="action">
+    <strong>PaySeller</strong><br>
+    Successful trade execution. Buyer pays the agreed amount and receives the NFT. Validates buyer authorization, payment delivery, and NFT transfer.
+  </div>
+
+  <div class="danger">
+    <strong>RefundSeller</strong><br>
+    Trade cancellation. Seller reclaims the NFT after the deadline passes. Validates seller authorization, deadline expiration, and NFT return.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>scriptInputContainsNFT</code></h3>
+  <pre><code>{-# INLINABLE scriptInputContainsNFT #-}
+scriptInputContainsNFT :: ScriptContext -> CurrencySymbol -> TokenName -> Bool
+scriptInputContainsNFT ctx cs tn =
+    case findOwnInput ctx of
+        Nothing -> traceError "no input from script found"
+        Just i  ->
+            let v = txOutValue $ txInInfoResolved i
+            in valueOf v cs tn >= 1</code></pre>
+  <p>Verifies that the script UTxO contains the specified NFT. This ensures the NFT remains locked in escrow until the transaction completes.</p>
+
+  <h3><code>valuePaidTo</code> (Implicit Helper)</h3>
+  <p>Although not explicitly defined in this version, the validator uses similar logic to check payments to specific parties by examining transaction outputs.</p>
+
+  <h2 id="6-core-validator-logic">6. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkValidator</code></h3>
+  <p>The main validation function that enforces escrow rules for both outcomes:</p>
+
+  <h4>PaySeller Validation (Successful Trade)</h4>
+  <ul>
+    <li>✅ NFT must be present in script input</li>
+    <li>✅ Must be signed by the buyer</li>
+    <li>✅ Seller must receive payment amount in ADA</li>
+    <li>✅ Buyer must receive the NFT</li>
+    <li>❌ Fails if NFT missing from escrow</li>
+    <li>❌ Fails if buyer signature missing</li>
+    <li>❌ Fails if seller not paid correctly</li>
+    <li>❌ Fails if buyer doesn't receive NFT</li>
+  </ul>
+
+  <h4>RefundSeller Validation (Trade Cancellation)</h4>
+  <ul>
+    <li>✅ NFT must be present in script input</li>
+    <li>✅ Must be signed by the seller</li>
+    <li>✅ Current time must be after deadline</li>
+    <li>✅ Seller must receive the NFT back</li>
+    <li>❌ Fails if NFT missing from escrow</li>
+    <li>❌ Fails if seller signature missing</li>
+    <li>❌ Fails if refund attempted before deadline</li>
+    <li>❌ Fails if seller doesn't receive NFT back</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Time Validation:</strong> The deadline check uses <code>Interval.from (edDeadline dat + 1)</code> to ensure the refund is only available <em>after</em> the deadline, not exactly at the deadline timestamp.
+  </div>
+
+  <h2 id="7-escrow-workflow">7. 🔄 Escrow Workflow</h2>
+
+  <div class="workflow">
+    <h3>Complete NFT Escrow Process</h3>
+    
+    <div class="diagram">
+      <strong>🔄 NFT Escrow Transaction Flow</strong><br>
+      Seller → Lock NFT → Escrow Contract → Buyer Payment → Release NFT<br>
+      OR<br>
+      Deadline Passes → Seller Refund → Reclaim NFT
+    </div>
+
+    <h4>1. Initial Setup</h4>
+    <pre><code>EscrowDatum {
+  edBuyer = "buyer_pkh",
+  edSeller = "seller_pkh", 
+  edAmount = 100000000,     -- 100 ADA purchase price
+  edDeadline = 1672531200,  -- Jan 1, 2023 00:00:00 GMT
+  edCurrency = "policy123",  -- NFT policy ID
+  edToken = "MyAwesomeNFT"   -- Specific token name
+}</code></pre>
+
+    <h4>2. Successful Trade Execution</h4>
+    <pre><code>Action: PaySeller
+Validation:
+  - NFT present in escrow ✅
+  - Buyer signature ✅
+  - Seller receives 100 ADA ✅
+  - Buyer receives NFT ✅
+Result: Trade completed successfully</code></pre>
+
+    <h4>3. Trade Cancellation (After Deadline)</h4>
+    <pre><code>Action: RefundSeller
+Validation:
+  - NFT present in escrow ✅
+  - Seller signature ✅
+  - Current time: 1672531201 (after deadline) ✅
+  - Seller receives NFT back ✅
+Result: NFT returned to seller</code></pre>
+
+    <h4>4. Failed Refund Attempt (Before Deadline)</h4>
+    <pre><code>Action: RefundSeller
+Validation:
+  - NFT present in escrow ✅
+  - Seller signature ✅
+  - Current time: 1672531199 (before deadline) ❌
+  - Fails: "too early for refund"
+Result: Transaction rejected</code></pre>
+  </div>
+
+  <h2 id="8-state-transitions">8. 📊 State Transitions</h2>
+
+  <div class="state-machine">
+    <h3>Escrow State Machine</h3>
+    
+    <div class="state">🔄 INITIAL STATE: NFT Locked in Escrow</div>
+    
+    <p><strong>Transition 1: Successful Trade</strong></p>
+    <ul>
+      <li>Trigger: Buyer executes PaySeller</li>
+      <li>Conditions: Buyer signature + correct payments</li>
+      <li>Result: Seller gets ADA, Buyer gets NFT</li>
+      <li>Final State: ✅ Trade Completed</li>
+    </ul>
+    
+    <p><strong>Transition 2: Refund After Deadline</strong></p>
+    <ul>
+      <li>Trigger: Seller executes RefundSeller after deadline</li>
+      <li>Conditions: Seller signature + deadline passed</li>
+      <li>Result: Seller gets NFT back</li>
+      <li>Final State: 🔄 Trade Cancelled</li>
+    </ul>
+    
+    <p><strong>Blocked Transitions:</strong></p>
+    <ul>
+      <li>❌ Refund before deadline</li>
+      <li>❌ PaySeller without buyer signature</li>
+      <li>❌ Incorrect payment amounts</li>
+      <li>❌ NFT not in escrow</li>
+    </ul>
+  </div>
+
+  <h2 id="9-script-compilation">9. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkValidatorUntyped #-}
+mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidatorUntyped d r c =
+    let dat = unsafeFromBuiltinData @EscrowDatum d
+        red = unsafeFromBuiltinData @EscrowAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkValidator dat red ctx then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])</code></pre>
+
+  <h2 id="10-practical-usage">10. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the escrow validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+    
+    -- Save validator to file
+    writeValidator "validator.plutus" validator
+    
+    -- Generate addresses and hashes
+    let vh      = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32  = toBech32ScriptAddress network validator
+    
+    -- Output deployment information
+    putStrLn "\n--- Escrow NFT Validator Info ---"
+    putStrLn $ "Validator Hash (Plutus): " <> P.show vh
+    putStrLn $ "Plutus Script Address:    " <> P.show onchain
+    putStrLn $ "Bech32 Script Address:    " <> bech32
+    putStrLn "---------------------------------"</code></pre>
+
+  <h3>Integration with NFT Marketplaces</h3>
+  <pre><code>-- Example: Create Escrow Transaction
+createEscrow :: PubKeyHash -> PubKeyHash -> Integer -> POSIXTime -> CurrencySymbol -> TokenName -> Tx
+createEscrow buyer seller amount deadline currency token = ...
+
+-- Example: Execute Trade
+executeTrade :: ValidatorHash -> CurrencySymbol -> TokenName -> Integer -> Tx
+executeTrade valHash currency token amount = ...
+
+-- Example: Claim Refund
+claimRefund :: ValidatorHash -> CurrencySymbol -> TokenName -> Tx
+claimRefund valHash currency token = ...</code></pre>
+
+  <h3>Example NFT Listing</h3>
+  <pre><code>NFT Details:
+  Policy ID: a1b2c3d4e5f6...
+  Token Name: "CryptoPunk #1234"
+  Price: 500 ADA
+  Deadline: 7 days from listing
+  Buyer: Specific address or any buyer
+  Seller: Original owner address</code></pre>
+
+  <h2 id="11-security-considerations">11. ⚠️ Security Considerations</h2>
+
+  <h3>Trust Assumptions</h3>
+  <ul>
+    <li><strong>No Third-Party Trust</strong>: Contract is fully self-executing</li>
+    <li><strong>Time-Based Security</strong>: Relies on accurate blockchain timestamps</li>
+    <li><strong>Signature Verification</strong>: Depends on proper cryptographic signing</li>
+  </ul>
+
+  <h3>Potential Risks</h3>
+  <ul>
+    <li><strong>Deadline Setting</strong>: Too short may rush buyers, too long may lock funds excessively</li>
+    <li><strong>NFT Standard Compatibility</strong>: Must work with various NFT implementations</li>
+    <li><strong>Network Congestion</strong>: Could affect deadline precision</li>
+    <li><strong>Front-Running</strong>: Potential for transaction ordering attacks</li>
+  </ul>
+
+  <h3>Risk Mitigation Strategies</h3>
+  <ul>
+    <li>Use reasonable deadlines (3-7 days for typical trades)</li>
+    <li>Test with various NFT standards and policies</li>
+    <li>Implement price discovery and market data integration</li>
+    <li>Add dispute resolution mechanisms for high-value trades</li>
+    <li>Include multi-signature options for institutional trading</li>
+  </ul>
+
+  <h2 id="12-glossary">12. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Escrow</strong></td><td>Financial arrangement where assets are held by third party until conditions are met</td></tr>
+    <tr><td><strong>Atomic Swap</strong></td><td>Simultaneous exchange of assets where either both transfers occur or neither does</td></tr>
+    <tr><td><strong>Counterparty Risk</strong></td><td>Risk that other party in transaction will not fulfill their obligations</td></tr>
+    <tr><td><strong>NFT (Non-Fungible Token)</strong></td><td>Unique cryptographic token representing ownership of digital or physical asset</td></tr>
+    <tr><td><strong>Currency Symbol</strong></td><td>Unique identifier for token minting policy on Cardano</td></tr>
+    <tr><td><strong>Token Name</strong></td><td>Specific identifier within a currency policy for individual tokens</td></tr>
+    <tr><td><strong>POSIX Time</strong></td><td>Unix timestamp representing seconds since January 1, 1970</td></tr>
+    <tr><td><strong>Lovelace</strong></td><td>Smallest unit of ADA (1 ADA = 1,000,000 lovelace)</td></tr>
+    <tr><td><strong>Public Key Hash (PKH)</strong></td><td>Cryptographic hash of public key used to identify wallet addresses</td></tr>
+    <tr><td><strong>Deadline</strong></td><td>Time limit after which escrow can be cancelled and assets returned</td></tr>
+    <tr><td><strong>Redeemer</strong></td><td>Script input that determines which validation path to execute</td></tr>
+    <tr><td><strong>Datum</strong></td><td>Data stored with UTxO that parameterizes script behavior</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For real-world marketplace deployment, consider adding:
+    <ul>
+      <li>Royalty payment mechanisms for creators</li>
+      <li>Bidding and auction functionality</li>
+      <li>Multi-asset support (trading multiple NFTs or tokens)</li>
+      <li>Platform fee structures</li>
+      <li>Verification for NFT authenticity and metadata</li>
+      <li>Integration with identity and reputation systems</li>
+      <li>Insurance mechanisms for high-value transactions</li>
+      <li>Cross-chain escrow capabilities</li>
+    </ul>
+  </div>
+
+</body>
+</html>

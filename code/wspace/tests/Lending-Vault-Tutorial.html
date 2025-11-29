@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CDP Lending Vault Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .success {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .math-formula {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: "Cambria Math", serif;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .state-machine {
+      background: #fff;
+      border: 2px solid #002b45;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .state {
+      background: #002b45;
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .risk-indicator {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin: 2px;
+      font-size: 0.9em;
+    }
+    .risk-low { background: #4caf50; color: white; }
+    .risk-medium { background: #ff9800; color: white; }
+    .risk-high { background: #f44336; color: white; }
+  </style>
+</head>
+<body>
+
+  <h1>🏦 CDP Lending Vault Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Collateralized Debt Position (CDP) Lending Vault smart contract, which implements a sophisticated decentralized lending protocol similar to MakerDAO. The contract enables users to lock collateral, mint stablecoins, and manage positions while maintaining strict collateralization ratios to ensure system solvency.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-vault-actions">🎯 Vault Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-collateral-ratios">📊 Collateral Ratio System</a></li>
+    <li><a href="#7-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#8-vault-lifecycle">🔄 Vault Lifecycle</a></li>
+    <li><a href="#9-risk-management">⚠️ Risk Management</a></li>
+    <li><a href="#10-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#11-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#12-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The CDP Lending Vault smart contract implements a comprehensive decentralized lending system that:</p>
+
+  <ul>
+    <li><strong>Enables over-collateralized borrowing</strong> with multiple collateral types</li>
+    <li><strong>Maintains dual collateral ratios</strong> for safety and liquidation triggers</li>
+    <li><strong>Supports dynamic position management</strong> with draw, repay, and close operations</li>
+    <li><strong>Implements automated liquidation</strong> for under-collateralized positions</li>
+    <li><strong>Ensures system solvency</strong> through strict ratio enforcement</li>
+  </ul>
+
+  <div class="note">
+    <strong>DeFi Innovation:</strong> This contract implements the core mechanics of decentralized stablecoin protocols like MakerDAO, where users can generate stablecoins (like DAI) by locking collateral in CDP vaults.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>POSIXTime</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: Token value operations (<code>valueOf</code>, <code>adaSymbol</code>, <code>adaToken</code>)</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>VaultDatum</code></h3>
+  <p>Stores the complete state of each lending vault:</p>
+  <ul>
+    <li><strong>vdOwner</strong>: Public key hash of the vault owner</li>
+    <li><strong>vdCollValue</strong>: Current collateral value in lovelace</li>
+    <li><strong>vdDebt</strong>: Outstanding stablecoin debt amount</li>
+    <li><strong>vdMCR</strong>: Minimum Collateral Ratio (%) for safe operations</li>
+    <li><strong>vdLCR</strong>: Liquidation Collateral Ratio (%) triggering forced closure</li>
+  </ul>
+
+  <pre><code>data VaultDatum = VaultDatum
+    { vdOwner    :: PubKeyHash
+    , vdCollValue :: Integer
+    , vdDebt     :: Integer
+    , vdMCR      :: Integer  -- Minimum Collateral Ratio, e.g., 150%
+    , vdLCR      :: Integer  -- Liquidation Collateral Ratio, e.g., 120%
+    }</code></pre>
+
+  <h3>Collateral Ratio System</h3>
+  <table>
+    <tr><th>Parameter</th><th>Purpose</th><th>Typical Value</th><th>Risk Level</th></tr>
+    <tr><td>MCR</td><td>Minimum for new borrowing</td><td>150%</td><td><span class="risk-indicator risk-low">Safe</span></td></tr>
+    <tr><td>LCR</td><td>Liquidation trigger threshold</td><td>120%</td><td><span class="risk-indicator risk-high">Danger</span></td></tr>
+  </table>
+
+  <h2 id="4-vault-actions">4. 🎯 Vault Actions</h2>
+
+  <h3><code>VaultAction</code></h3>
+  <p>Defines the five core operations for vault management:</p>
+
+  <div class="success">
+    <strong>Open</strong><br>
+    Create a new vault position. Requires owner signature and initial collateral deposit.
+  </div>
+
+  <div class="info">
+    <strong>Draw amount</strong><br>
+    Borrow additional stablecoins against existing collateral. Must maintain MCR after operation.
+  </div>
+
+  <div class="info">
+    <strong>Repay amount</strong><br>
+    Reduce outstanding debt by repaying stablecoins. Must maintain MCR or reach zero debt.
+  </div>
+
+  <div class="success">
+    <strong>Close</strong><br>
+    Close vault position completely. Requires zero outstanding debt and owner authorization.
+  </div>
+
+  <div class="danger">
+    <strong>Liquidate liquidator</strong><br>
+    Force closure of under-collateralized vaults. Only allowed when collateral ratio falls below LCR.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>signedBy</code></h3>
+  <pre><code>{-# INLINABLE signedBy #-}
+signedBy :: PubKeyHash -> ScriptContext -> Bool
+signedBy pkh ctx = txSignedBy (scriptContextTxInfo ctx) pkh</code></pre>
+  <p>Validates transaction signature by specific public key hash.</p>
+
+  <h3><code>after</code></h3>
+  <pre><code>{-# INLINABLE after #-}
+after :: POSIXTime -> ScriptContext -> Bool
+after t ctx = Interval.contains (Interval.from (t + 1)) (txInfoValidRange $ scriptContextTxInfo ctx)</code></pre>
+  <p>Checks if transaction occurs after specified timestamp.</p>
+
+  <h2 id="6-collateral-ratios">6. 📊 Collateral Ratio System</h2>
+
+  <h3><code>collateralRatio</code></h3>
+  <pre><code>{-# INLINABLE collateralRatio #-}
+collateralRatio :: Integer -> Integer -> Integer
+collateralRatio coll debt = if debt == 0 then 100000 else (coll * 100) `divide` debt</code></pre>
+
+  <h3>Collateral Ratio Formula</h3>
+  <div class="math-formula">
+    Collateral Ratio = (Collateral Value × 100) ÷ Debt Amount
+  </div>
+
+  <h3>Example Calculations</h3>
+  <pre><code>Example 1: Healthy Position
+  Collateral: 1500 ADA
+  Debt: 1000 stablecoins
+  Ratio: (1500 × 100) ÷ 1000 = 150% ✅ Above MCR
+
+Example 2: At Risk Position  
+  Collateral: 1300 ADA
+  Debt: 1000 stablecoins
+  Ratio: (1300 × 100) ÷ 1000 = 130% ❌ Below MCR but above LCR
+
+Example 3: Liquidation Territory
+  Collateral: 1100 ADA
+  Debt: 1000 stablecoins
+  Ratio: (1100 × 100) ÷ 1000 = 110% ❌ Below LCR - can be liquidated</code></pre>
+
+  <h3>Risk Zones</h3>
+  <table>
+    <tr><th>Collateral Ratio</th><th>Status</th><th>Allowed Actions</th><th>Risk Level</th></tr>
+    <tr><td>> 150%</td><td>Healthy</td><td>All operations</td><td><span class="risk-indicator risk-low">Low</span></td></tr>
+    <tr><td>120-150%</td><td>At Risk</td><td>Repay only</td><td><span class="risk-indicator risk-medium">Medium</span></td></tr>
+    <tr><td>< 120%</td><td>Liquidatable</td><td>Liquidation only</td><td><span class="risk-indicator risk-high">High</span></td></tr>
+  </table>
+
+  <h2 id="7-core-validator-logic">7. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkVaultValidator</code></h3>
+  <p>The main validation function that enforces vault safety rules:</p>
+
+  <h4>Open Validation</h4>
+  <ul>
+    <li>✅ Must be signed by vault owner</li>
+    <li>❌ Fails if owner signature missing</li>
+  </ul>
+
+  <h4>Draw Validation</h4>
+  <ul>
+    <li>✅ Must be signed by vault owner</li>
+    <li>✅ Post-operation ratio must meet MCR</li>
+    <li>❌ Fails if owner signature missing</li>
+    <li>❌ Fails if new ratio below MCR</li>
+  </ul>
+
+  <h4>Repay Validation</h4>
+  <ul>
+    <li>✅ Must be signed by vault owner</li>
+    <li>✅ Post-operation ratio must meet MCR OR debt reaches zero</li>
+    <li>❌ Fails if owner signature missing</li>
+    <li>❌ Fails if ratio below MCR with remaining debt</li>
+  </ul>
+
+  <h4>Close Validation</h4>
+  <ul>
+    <li>✅ Must be signed by vault owner</li>
+    <li>✅ Must have zero outstanding debt</li>
+    <li>❌ Fails if owner signature missing</li>
+    <li>❌ Fails if debt not fully repaid</li>
+  </ul>
+
+  <h4>Liquidate Validation</h4>
+  <ul>
+    <li>✅ Must be signed by liquidator</li>
+    <li>✅ Current ratio must be below LCR</li>
+    <li>❌ Fails if liquidator signature missing</li>
+    <li>❌ Fails if ratio above LCR threshold</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Safety Mechanism:</strong> The repay operation allows positions to reach zero debt even if below MCR, providing an escape path for distressed positions without requiring additional collateral.
+  </div>
+
+  <h2 id="8-vault-lifecycle">8. 🔄 Vault Lifecycle</h2>
+
+  <div class="workflow">
+    <h3>Complete Vault Management Process</h3>
+
+    <div class="state-machine">
+      <div class="state">🚀 Vault Creation: Open</div>
+      
+      <h4>1. Initial Vault Setup</h4>
+      <pre><code>VaultDatum {
+  vdOwner = "user_pkh",
+  vdCollValue = 2000000000,  -- 2000 ADA collateral
+  vdDebt = 0,               -- No initial debt
+  vdMCR = 150,              -- 150% minimum ratio
+  vdLCR = 120               -- 120% liquidation threshold
+}</code></pre>
+
+      <h4>2. First Borrowing Operation</h4>
+      <pre><code>Action: Draw 1000000 (1000 stablecoins)
+Validation:
+  - Owner signature ✅
+  - Post-op ratio: (2000 × 100) ÷ 1000 = 200% ✅ Above MCR
+New State: Debt = 1000, Ratio = 200%</code></pre>
+
+      <h4>3. Additional Borrowing</h4>
+      <pre><code>Action: Draw 500000 (500 more stablecoins)
+Validation:
+  - Owner signature ✅
+  - Post-op ratio: (2000 × 100) ÷ 1500 = 133% ❌ Below MCR
+Result: Transaction rejected - insufficient collateral</code></pre>
+
+      <h4>4. Partial Repayment</h4>
+      <pre><code>Action: Repay 300000 (300 stablecoins)
+Validation:
+  - Owner signature ✅
+  - Post-op ratio: (2000 × 100) ÷ 700 = 285% ✅ Above MCR
+New State: Debt = 700, Ratio = 285%</code></pre>
+
+      <h4>5. Collateral Value Drop Scenario</h4>
+      <pre><code>Scenario: ADA price drops 40%
+  New collateral value: 1200 ADA (was 2000)
+  Current debt: 700 stablecoins
+  Current ratio: (1200 × 100) ÷ 700 = 171% ✅ Still above MCR</code></pre>
+
+      <h4>6. Severe Collateral Drop</h4>
+      <pre><code>Scenario: ADA price drops 50%
+  New collateral value: 1000 ADA
+  Current debt: 700 stablecoins  
+  Current ratio: (1000 × 100) ÷ 700 = 142% ❌ Below MCR but above LCR
+Status: Can only repay, cannot draw more</code></pre>
+
+      <h4>7. Liquidation Scenario</h4>
+      <pre><code>Scenario: ADA price drops 60%
+  New collateral value: 800 ADA
+  Current debt: 700 stablecoins
+  Current ratio: (800 × 100) ÷ 700 = 114% ❌ Below LCR
+Action: Liquidate "liquidator_pkh"
+Validation:
+  - Ratio 114% < LCR 120% ✅
+  - Liquidator signature ✅
+Result: Vault liquidated, collateral seized</code></pre>
+
+      <h4>8. Successful Closure</h4>
+      <pre><code>Action: Repay 700000 (remaining debt)
+Validation:
+  - Owner signature ✅
+  - Debt reaches zero ✅
+Action: Close
+Validation:
+  - Owner signature ✅
+  - Zero debt ✅
+Result: Vault closed, collateral returned</code></pre>
+    </div>
+  </div>
+
+  <h2 id="9-risk-management">9. ⚠️ Risk Management</h2>
+
+  <h3>Systemic Risks</h3>
+  <ul>
+    <li><strong>Collateral Volatility</strong>: Rapid price movements can trigger mass liquidations</li>
+    <li><strong>Liquidation Cascades</strong>: Multiple liquidations affecting market prices</li>
+    <li><strong>Oracle Risk</strong>: Dependence on accurate price feeds</li>
+    <li><strong>Liquidity Risk</strong>: Insufficient liquidators for large positions</li>
+  </ul>
+
+  <h3>User Risks</h3>
+  <ul>
+    <li><strong>Liquidation Risk</strong>: Loss of collateral due to ratio breaches</li>
+    <li><strong>Market Timing Risk</strong>: Borrowing before collateral value drops</li>
+    <li><strong>Gas Cost Risk</strong>: Transaction costs during volatile periods</li>
+    <li><strong>Protocol Risk</strong>: Smart contract vulnerabilities or upgrades</li>
+  </ul>
+
+  <h3>Risk Mitigation Strategies</h3>
+  <ul>
+    <li>Use conservative collateral ratios (150%+ MCR)</li>
+    <li>Implement circuit breakers during extreme volatility</li>
+    <li>Use multiple price oracles for collateral valuation</li>
+    <li>Add liquidation penalties and incentives</li>
+    <li>Implement gradual liquidation for large positions</li>
+    <li>Provide position health monitoring tools</li>
+  </ul>
+
+  <h2 id="10-script-compilation">10. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkValidatorUntyped #-}
+mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidatorUntyped d r c =
+    if mkVaultValidator (unsafeFromBuiltinData d) (unsafeFromBuiltinData r) (unsafeFromBuiltinData c) then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])</code></pre>
+
+  <h2 id="11-practical-usage">11. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the vault validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+    writeValidator "vault.plutus" validator
+    let vh = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32 = toBech32ScriptAddress network validator
+    putStrLn "\n--- CDP Lending Vault Info ---"
+    putStrLn $ "Validator Hash: " <> P.show vh
+    putStrLn $ "Plutus Script Address: " <> P.show onchain
+    putStrLn $ "Bech32 Script Address: " <> bech32
+    putStrLn "---------------------------------"</code></pre>
+
+  <h3>Integration with DeFi Protocols</h3>
+  <pre><code>-- Example: Create Vault Position
+createVault :: PubKeyHash -> Integer -> Integer -> Integer -> Tx
+createVault owner collValue mcr lcr = ...
+
+-- Example: Manage Debt
+drawStablecoins :: ValidatorHash -> Integer -> Tx
+drawStablecoins valHash amount = ...
+
+repayStablecoins :: ValidatorHash -> Integer -> Tx  
+repayStablecoins valHash amount = ...
+
+-- Example: Liquidate Position
+liquidateVault :: ValidatorHash -> PubKeyHash -> Tx
+liquidateVault valHash liquidator = ...</code></pre>
+
+  <h2 id="12-glossary">12. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>CDP (Collateralized Debt Position)</strong></td><td>A vault where users lock collateral to mint stablecoins</td></tr>
+    <tr><td><strong>Collateral Ratio</strong></td><td>Ratio of collateral value to debt value, expressed as percentage</td></tr>
+    <tr><td><strong>MCR (Minimum Collateral Ratio)</strong></td><td>Lowest allowed ratio for borrowing operations</td></tr>
+    <tr><td><strong>LCR (Liquidation Collateral Ratio)</strong></td><td>Ratio threshold triggering forced liquidation</td></tr>
+    <tr><td><strong>Stablecoin</strong></td><td>Price-stable cryptocurrency minted against collateral</td></tr>
+    <tr><td><strong>Draw</strong></td><td>Action of borrowing additional stablecoins</td></tr>
+    <tr><td><strong>Repay</strong></td><td>Action of returning stablecoins to reduce debt</td></tr>
+    <tr><td><strong>Liquidation</strong></td><td>Forced closure of under-collateralized positions</td></tr>
+    <tr><td><strong>Liquidator</strong></td><td>Entity that executes liquidation for profit</td></tr>
+    <tr><td><strong>Over-collateralization</strong></td><td>Having more collateral value than debt value</td></tr>
+    <tr><td><strong>Debt Ceiling</strong></td><td>Maximum stablecoin debt allowed per vault or system-wide</td></tr>
+    <tr><td><strong>Stability Fee</strong></td><td>Interest rate charged on outstanding debt</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For enterprise DeFi deployment, consider adding:
+    <ul>
+      <li>Stability fee accumulation and compounding</li>
+      <li>Multiple collateral type support with risk parameters</li>
+      <li>Debt ceiling and system-wide risk management</li>
+      <li>Governance mechanisms for parameter adjustments</li>
+      <li>Liquidation auctions with bidding mechanisms</li>
+      <li>Insurance funds for under-collateralized positions</li>
+      <li>Flash loan integration for arbitrage opportunities</li>
+      <li>Cross-protocol composability with other DeFi services</li>
+    </ul>
+  </div>
+
+</body>
+</html>

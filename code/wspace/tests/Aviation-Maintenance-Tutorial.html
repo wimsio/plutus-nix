@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aviation Maintenance Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .function {
+      background: #f0f7ff;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>✈️ Aviation Maintenance Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Aviation Maintenance smart contract, which manages aircraft maintenance records and landing/takeoff slot fees on the Cardano blockchain. The contract combines NFT-based part tracking with maintenance logs and fee payments.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-redeemer-actions">🎯 Redeemer Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#7-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#8-address-generation">🏷️ Address Generation</a></li>
+    <li><a href="#9-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#10-testing-strategy">🧷 Testing Strategy</a></li>
+    <li><a href="#11-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Aviation Maintenance smart contract provides a comprehensive solution for managing aircraft maintenance records and airport slot fees on-chain. It combines three key components:</p>
+
+  <ul>
+    <li><strong>Part NFT</strong>: Represents a specific aircraft part with unique identifiers</li>
+    <li><strong>Maintenance Log</strong>: Tracks maintenance history with certified records</li>
+    <li><strong>Slot Booking</strong>: Manages landing/takeoff fees for airport slots</li>
+  </ul>
+
+  <div class="note">
+    <strong>Note:</strong> This contract demonstrates real-world blockchain applications in aviation logistics and maintenance tracking.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Provides fundamental types (<code>POSIXTime</code>, <code>PubKeyHash</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>, <code>findOwnInput</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: ADA and token value handling</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and data serialization</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for validator scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>PartNFT</code></h3>
+  <p>Represents a unique aircraft part with tracking information:</p>
+  <ul>
+    <li><strong>pnTailNo</strong>: Aircraft tail number identifier</li>
+    <li><strong>pnSerialNo</strong>: Part serial number for uniqueness</li>
+    <li><strong>pnRecordsHash</strong>: Hash of maintenance records for integrity</li>
+  </ul>
+
+  <h3><code>MaintenanceLog</code></h3>
+  <p>Records a single maintenance event:</p>
+  <ul>
+    <li><strong>mlWork</strong>: Description of maintenance work performed</li>
+    <li><strong>mlTimestamp</strong>: When the maintenance was performed</li>
+    <li><strong>mlCertifier</strong>: Public key of the authorized certifier</li>
+  </ul>
+
+  <h3><code>Slot</code></h3>
+  <p>Defines airport slot booking information:</p>
+  <ul>
+    <li><strong>slAirport</strong>: Airport identifier code</li>
+    <li><strong>slTime</strong>: Scheduled time for landing/takeoff</li>
+    <li><strong>slFee</strong>: Fee amount in ADA</li>
+  </ul>
+
+  <h3><code>AviationDatum</code></h3>
+  <p>Combined datum stored at script UTxO containing all relevant data:</p>
+  <ul>
+    <li><strong>adPartNFT</strong>: The aircraft part NFT information</li>
+    <li><strong>adLog</strong>: Current maintenance log entry</li>
+    <li><strong>adSlot</strong>: Airport slot booking details</li>
+    <li><strong>adOwner</strong>: Aircraft owner's public key hash</li>
+  </ul>
+
+  <h2 id="4-redeemer-actions">4. 🎯 Redeemer Actions</h2>
+
+  <h3><code>AviationAction</code></h3>
+  <p>Defines the two possible actions that can be performed:</p>
+
+  <div class="function">
+    <strong>AppendLog</strong><br>
+    Allows certified maintenance personnel to add new maintenance records to the part's history.
+  </div>
+
+  <div class="function">
+    <strong>PaySlotFee</strong><br>
+    Enables the aircraft owner to pay landing/takeoff fees for booked airport slots.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>nftPresent</code></h3>
+  <pre><code>{-# INLINABLE nftPresent #-}
+nftPresent :: ScriptContext -> CurrencySymbol -> TokenName -> Bool
+nftPresent ctx cs tn =
+    case findOwnInput ctx of
+        Nothing -> traceError "missing script input"
+        Just i  ->
+            let v = txOutValue (txInInfoResolved i)
+            in valueOf v cs tn >= 1</code></pre>
+  <p>Verifies that the specified NFT is present in the script UTxO.</p>
+
+  <h3><code>paidTo</code></h3>
+  <pre><code>{-# INLINABLE paidTo #-}
+paidTo :: TxInfo -> PubKeyHash -> Value
+paidTo info pkh =
+    mconcat
+      [ txOutValue o
+      | o <- txInfoOutputs info
+      , txOutAddress o == Address (PubKeyCredential pkh) Nothing
+      ]</code></pre>
+  <p>Calculates the total value paid to a specific public key address in the transaction.</p>
+
+  <h2 id="6-core-validator-logic">6. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkValidator</code></h3>
+  <p>The main validation function that enforces business rules for both actions:</p>
+
+  <h4>AppendLog Validation</h4>
+  <ul>
+    <li>✅ Must be signed by the authorized certifier</li>
+    <li>✅ Part NFT must be present in the UTxO</li>
+    <li>❌ Fails if certifier signature is missing</li>
+    <li>❌ Fails if part NFT is not found</li>
+  </ul>
+
+  <h4>PaySlotFee Validation</h4>
+  <ul>
+    <li>✅ Must be signed by the aircraft owner</li>
+    <li>✅ Required slot fee must be paid to the owner</li>
+    <li>❌ Fails if owner signature is missing</li>
+    <li>❌ Fails if insufficient fee is paid</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Security Note:</strong> The current implementation uses empty CurrencySymbol and TokenName for NFT checking. In production, these should be properly configured NFT identifiers.
+  </div>
+
+  <h2 id="7-script-compilation">7. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility using <code>BuiltinData</code>:</p>
+  <pre><code>{-# INLINABLE mkValidatorUntyped #-}
+mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidatorUntyped d r c =
+    let dat = unsafeFromBuiltinData @AviationDatum d
+        red = unsafeFromBuiltinData @AviationAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkValidator dat red ctx then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])</code></pre>
+
+  <h2 id="8-address-generation">8. 🏷️ Address Generation</h2>
+
+  <h3><code>plutusValidatorHash</code></h3>
+  <p>Generates the validator hash from the compiled script.</p>
+
+  <h3><code>plutusScriptAddress</code></h3>
+  <p>Creates the script address for on-chain deployment.</p>
+
+  <h3><code>toBech32ScriptAddress</code></h3>
+  <p>Converts the script address to Bech32 format for human-readable representation.</p>
+
+  <h2 id="9-practical-usage">9. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and save the validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+    
+    -- Save validator to file
+    writeValidator "aviation-maintenance.plutus" validator
+    
+    -- Generate addresses
+    let vh      = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32  = toBech32ScriptAddress network validator
+    
+    -- Output deployment information
+    putStrLn "\n--- Aviation Maintenance + Slot Fee Validator ---"
+    putStrLn $ "Validator Hash (Plutus): " <> P.show vh
+    putStrLn $ "Plutus Script Address:    " <> P.show onchain
+    putStrLn $ "Bech32 Script Address:    " <> bech32
+    putStrLn "-------------------------------------------------"</code></pre>
+
+  <h3>Example Transaction Flows</h3>
+
+  <h4>Adding Maintenance Record</h4>
+  <ol>
+    <li>Certifier signs transaction with <code>AppendLog</code> redeemer</li>
+    <li>Transaction includes updated maintenance log in datum</li>
+    <li>Validator checks certifier signature and NFT presence</li>
+  </ol>
+
+  <h4>Paying Slot Fee</h4>
+  <ol>
+    <li>Owner signs transaction with <code>PaySlotFee</code> redeemer</li>
+    <li>Transaction includes fee payment to owner's address</li>
+    <li>Validator checks owner signature and fee amount</li>
+  </ol>
+
+  <h2 id="10-testing-strategy">10. 🧷 Testing Strategy</h2>
+
+  <h3>Test Scenarios</h3>
+  <ul>
+    <li><strong>Valid Maintenance Update</strong>: Certifier with proper credentials adds log</li>
+    <li><strong>Unauthorized Maintenance Attempt</strong>: Non-certifier tries to update log</li>
+    <li><strong>Valid Fee Payment</strong>: Owner pays correct slot fee</li>
+    <li><strong>Insufficient Fee Payment</strong>: Owner pays less than required fee</li>
+    <li><strong>Wrong Signer for Fee</strong>: Non-owner attempts fee payment</li>
+  </ul>
+
+  <h3>Edge Cases</h3>
+  <ul>
+    <li>NFT transferred away during maintenance update</li>
+    <li>Multiple maintenance updates in single transaction</li>
+    <li>Fee payment with non-ADA tokens</li>
+  </ul>
+
+  <h2 id="11-glossary">11. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Part NFT</strong></td><td>Non-fungible token representing a unique aircraft part with tracking information</td></tr>
+    <tr><td><strong>Maintenance Log</strong></td><td>On-chain record of maintenance work performed on an aircraft part</td></tr>
+    <tr><td><strong>Slot Booking</strong></td><td>Scheduled time slot for aircraft landing or takeoff at an airport</td></tr>
+    <tr><td><strong>Certifier</strong></td><td>Authorized maintenance personnel who can validate and record maintenance work</td></tr>
+    <tr><td><strong>Datum</strong></td><td>On-chain data stored with UTxO that determines script behavior</td></tr>
+    <tr><td><strong>Redeemer</strong></td><td>Input provided when spending from a script that specifies the action to perform</td></tr>
+    <tr><td><strong>Validator Hash</strong></td><td>Cryptographic hash identifying a specific validator script</td></tr>
+    <tr><td><strong>Bech32 Address</strong></td><td>Human-readable address format used in Cardano</td></tr>
+    <tr><td><strong>UTxO</strong></td><td>Unspent Transaction Output - the fundamental unit of value in Cardano</td></tr>
+    <tr><td><strong>Script Context</strong></td><td>Transaction information available to validator during execution</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Considerations:</strong> For real-world deployment, consider adding:
+    <ul>
+      <li>Proper NFT minting policy with unique identifiers</li>
+      <li>More comprehensive maintenance log history</li>
+      <li>Slot availability checking</li>
+      <li>Refund mechanisms for cancelled slots</li>
+      <li>Multi-signature requirements for critical operations</li>
+    </ul>
+  </div>
+
+</body>
+</html>

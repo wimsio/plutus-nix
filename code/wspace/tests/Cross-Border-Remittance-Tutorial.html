@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cross-Border Remittance Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .function {
+      background: #f0f7ff;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .action {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .math-formula {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: "Cambria Math", serif;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .diagram {
+      background: #f8f8f8;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 20px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🌍 Cross-Border Remittance Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Cross-Border Remittance smart contract, which implements a decentralized international money transfer system. The contract enables secure, transparent cross-border payments with foreign exchange conversion and regulatory compliance features.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-redeemer-actions">🎯 Redeemer Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-fx-oracle-integration">💱 FX Oracle Integration</a></li>
+    <li><a href="#7-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#8-remittance-workflow">🔄 Remittance Workflow</a></li>
+    <li><a href="#9-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#10-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#11-compliance-security">⚠️ Compliance & Security</a></li>
+    <li><a href="#12-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Cross-Border Remittance smart contract implements a decentralized international payment system that:</p>
+
+  <ul>
+    <li><strong>Enables cross-border transfers</strong> between sender and receiver in different countries</li>
+    <li><strong>Integrates FX oracles</strong> for real-time foreign exchange rates</li>
+    <li><strong>Includes KYC/AML compliance</strong> through reference inputs</li>
+    <li><strong>Automates currency conversion</strong> at current market rates</li>
+    <li><strong>Provides secure escrow</strong> during the transfer process</li>
+  </ul>
+
+  <div class="note">
+    <strong>Real-World Application:</strong> This contract addresses the $700+ billion remittance market, providing a decentralized alternative to traditional services like Western Union or MoneyGram with lower fees and faster settlement.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>TxOutRef</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>, <code>txInfoInputs</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: Token value operations (<code>valueOf</code>, <code>adaSymbol</code>, <code>adaToken</code>)</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>RemitDatum</code></h3>
+  <p>Stores all remittance transaction details:</p>
+  <ul>
+    <li><strong>rdSender</strong>: Public key hash of the sender initiating the transfer</li>
+    <li><strong>rdReceiver</strong>: Public key hash of the recipient receiving funds</li>
+    <li><strong>rdAmount</strong>: Amount to be transferred (in source currency)</li>
+    <li><strong>rdCorridor</strong>: Payment corridor identifier (e.g., "USD-EUR")</li>
+    <li><strong>rdFxOracleRef</strong>: Reference to the FX rate oracle UTxO</li>
+    <li><strong>rdKycRef</strong>: Reference to KYC/AML compliance verification</li>
+  </ul>
+
+  <pre><code>data RemitDatum = RemitDatum
+    { rdSender      :: PubKeyHash
+    , rdReceiver    :: PubKeyHash
+    , rdAmount      :: Integer
+    , rdCorridor    :: BuiltinByteString
+    , rdFxOracleRef :: TxOutRef
+    , rdKycRef      :: TxOutRef
+    }</code></pre>
+
+  <h3>Payment Corridors</h3>
+  <p>The contract supports multiple currency corridors:</p>
+  <table>
+    <tr><th>Corridor</th><th>Description</th><th>Example Rate</th></tr>
+    <tr><td>USD-EUR</td><td>US Dollar to Euro</td><td>0.92 (1 USD = 0.92 EUR)</td></tr>
+    <tr><td>USD-GBP</td><td>US Dollar to British Pound</td><td>0.79</td></tr>
+    <tr><td>EUR-ADA</td><td>Euro to Cardano ADA</td><td>Market rate</td></tr>
+    <tr><td>USD-ADA</td><td>US Dollar to Cardano ADA</td><td>Market rate</td></tr>
+  </table>
+
+  <h2 id="4-redeemer-actions">4. 🎯 Redeemer Actions</h2>
+
+  <h3><code>RemitAction</code></h3>
+  <p>Defines the two-phase remittance process:</p>
+
+  <div class="action">
+    <strong>Deposit</strong><br>
+    Sender initiates the transfer by depositing funds into the remittance contract. Validates sender authorization, KYC status, and FX oracle availability.
+  </div>
+
+  <div class="action">
+    <strong>Withdraw</strong><br>
+    Receiver claims the converted funds. Validates receiver authorization, current FX rates, and ensures proper amount delivery after conversion.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>hasRef</code></h3>
+  <pre><code>{-# INLINABLE hasRef #-}
+hasRef :: TxInfo -> TxOutRef -> Bool
+hasRef info expectedRef =
+    any (\i -> txInInfoOutRef i == expectedRef) (txInfoInputs info)</code></pre>
+  <p>Verifies that a specific transaction output reference is present in the transaction inputs.</p>
+
+  <h3><code>valuePaidToPKH</code></h3>
+  <pre><code>{-# INLINABLE valuePaidToPKH #-}
+valuePaidToPKH :: TxInfo -> PubKeyHash -> Value
+valuePaidToPKH info pkh =
+    mconcat
+        [ txOutValue o
+        | o <- txInfoOutputs info
+        , txOutAddress o == pubKeyHashAddress pkh
+        ]</code></pre>
+  <p>Calculates total value paid to a specific public key hash address in the transaction.</p>
+
+  <h3><code>pubKeyHashAddress</code></h3>
+  <pre><code>{-# INLINABLE pubKeyHashAddress #-}
+pubKeyHashAddress :: PubKeyHash -> Address
+pubKeyHashAddress p = Address (PubKeyCredential p) Nothing</code></pre>
+  <p>Constructs an address from a public key hash.</p>
+
+  <h2 id="6-fx-oracle-integration">6. 💱 FX Oracle Integration</h2>
+
+  <h3><code>getOracleOutput</code></h3>
+  <pre><code>{-# INLINABLE getOracleOutput #-}
+getOracleOutput :: TxInfo -> TxOutRef -> TxOut
+getOracleOutput info ref =
+    case [ txInInfoResolved i | i <- txInfoInputs info, txInInfoOutRef i == ref ] of
+        [o] -> o
+        _   -> traceError "oracle input missing"</code></pre>
+  <p>Retrieves the oracle output from transaction inputs using the reference.</p>
+
+  <h3><code>readOracleRate</code></h3>
+  <pre><code>{-# INLINABLE readOracleRate #-}
+readOracleRate :: TxOut -> Integer
+readOracleRate o =
+    case txOutDatum o of
+        OutputDatum (Datum d) ->
+            unsafeFromBuiltinData @Integer d
+        _ -> traceError "oracle must have inline datum"</code></pre>
+  <p>Reads the exchange rate from the oracle's inline datum.</p>
+
+  <h3>FX Rate Calculation</h3>
+  <div class="math-formula">
+    Received Amount = (Sent Amount × Exchange Rate) ÷ 1000
+  </div>
+
+  <div class="note">
+    <strong>Rate Precision:</strong> The division by 1000 allows for three decimal places of precision in exchange rates (e.g., rate 920 represents 0.920).
+  </div>
+
+  <h3>Example FX Conversion</h3>
+  <pre><code>Remittance Details:
+  Sent Amount: 1000 (USD)
+  Exchange Rate: 920 (0.920 EUR per USD)
+  Calculation: (1000 × 920) ÷ 1000 = 920 EUR
+  
+Receiver receives: 920 EUR equivalent</code></pre>
+
+  <h2 id="7-core-validator-logic">7. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkValidator</code></h3>
+  <p>The main validation function that enforces remittance rules:</p>
+
+  <h4>Deposit Validation</h4>
+  <ul>
+    <li>✅ Must be signed by the sender</li>
+    <li>✅ FX oracle reference must be present</li>
+    <li>✅ KYC reference must be present</li>
+    <li>✅ Sender must deposit sufficient funds</li>
+    <li>❌ Fails if sender signature missing</li>
+    <li>❌ Fails if oracle or KYC references missing</li>
+    <li>❌ Fails if insufficient funds deposited</li>
+  </ul>
+
+  <h4>Withdraw Validation</h4>
+  <ul>
+    <li>✅ Must be signed by the receiver</li>
+    <li>✅ FX oracle reference must be present</li>
+    <li>✅ KYC reference must be present</li>
+    <li>✅ Receiver must receive FX-adjusted amount</li>
+    <li>❌ Fails if receiver signature missing</li>
+    <li>❌ Fails if oracle or KYC references missing</li>
+    <li>❌ Fails if incorrect amount delivered</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Security Note:</strong> The contract depends on reliable oracle data and KYC verification. In production, use multiple reputable oracles and certified KYC providers.
+  </div>
+
+  <h2 id="8-remittance-workflow">8. 🔄 Remittance Workflow</h2>
+
+  <div class="workflow">
+    <h3>Complete Remittance Process</h3>
+    
+    <div class="diagram">
+      <strong>🌍 Cross-Border Remittance Flow</strong><br>
+      Sender → Deposit → Contract Escrow → FX Conversion → Receiver → Withdraw
+    </div>
+
+    <h4>1. Initial Setup</h4>
+    <pre><code>RemitDatum {
+  rdSender = "sender_pkh",
+  rdReceiver = "receiver_pkh", 
+  rdAmount = 1000,              -- $1000 to send
+  rdCorridor = "USD-EUR",       -- Conversion corridor
+  rdFxOracleRef = "oracle_ref", -- FX rate oracle
+  rdKycRef = "kyc_ref"          -- Compliance verification
+}</code></pre>
+
+    <h4>2. Sender Deposit</h4>
+    <pre><code>Action: Deposit
+Validation:
+  - Sender signature ✅
+  - FX oracle present ✅ (rate: 920)
+  - KYC verification present ✅
+  - Funds deposited: 1000 ADA ✅
+State: Funds locked in contract escrow</code></pre>
+
+    <h4>3. Receiver Withdrawal</h4>
+    <pre><code>Action: Withdraw  
+Validation:
+  - Receiver signature ✅
+  - FX oracle present ✅ (current rate: 920)
+  - KYC verification present ✅
+  - Amount calculation: (1000 × 920) ÷ 1000 = 920 ✅
+  - Receiver receives: 920 ADA ✅
+State: Transaction completed</code></pre>
+
+    <h4>4. FX Rate Changes</h4>
+    <pre><code>Scenario: Rate improves to 940 before withdrawal
+Calculation: (1000 × 940) ÷ 1000 = 940
+Receiver benefits from better rate: receives 940 ADA</code></pre>
+  </div>
+
+  <h2 id="9-script-compilation">9. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkValidatorUntyped #-}
+mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidatorUntyped d r c =
+    let dat = unsafeFromBuiltinData @RemitDatum d
+        red = unsafeFromBuiltinData @RemitAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkValidator dat red ctx then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])</code></pre>
+
+  <h2 id="10-practical-usage">10. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the remittance validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+    
+    -- Save validator to file
+    writeValidator "cross-border-remit.plutus" validator
+    
+    -- Generate addresses and hashes
+    let vh      = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32  = toBech32ScriptAddress network validator
+    
+    -- Output deployment information
+    putStrLn "\n--- Cross-Border Remittance Validator Info ---"
+    putStrLn $ "Validator Hash (Plutus): " <> P.show vh
+    putStrLn $ "Plutus Script Address:    " <> P.show onchain
+    putStrLn $ "Bech32 Script Address:    " <> bech32
+    putStrLn "------------------------------------------------"</code></pre>
+
+  <h3>Integration with Oracles and KYC</h3>
+  <pre><code>-- Example: FX Oracle Setup
+fxOracleDatum :: Integer -> Datum
+fxOracleDatum rate = Datum $ toBuiltinData rate
+
+-- Example: KYC Verification
+kycDatum :: PubKeyHash -> Bool -> Datum  
+kycDatum pkh verified = Datum $ toBuiltinData (pkh, verified)
+
+-- Example: Create Remittance Transaction
+createRemittance :: PubKeyHash -> PubKeyHash -> Integer -> TxOutRef -> TxOutRef -> Tx
+createRemittance sender receiver amount fxRef kycRef = ...</code></pre>
+
+  <h2 id="11-compliance-security">11. ⚠️ Compliance & Security</h2>
+
+  <h3>Regulatory Compliance</h3>
+  <ul>
+    <li><strong>KYC/AML Verification</strong>: Mandatory identity verification</li>
+    <li><strong>Transaction Monitoring</strong>: All transfers tracked on-chain</li>
+    <li><strong>Sanctions Screening</strong>: Integration with sanctions lists</li>
+    <li><strong>Reporting</strong>: Audit trail for regulatory reporting</li>
+  </ul>
+
+  <h3>Security Considerations</h3>
+  <ul>
+    <li><strong>Oracle Reliability</strong>: Dependence on accurate FX rate feeds</li>
+    <li><strong>KYC Provider Trust</strong>: Reliance on certified verification services</li>
+    <li><strong>Front-Running</strong>: Potential manipulation of FX rates</li>
+    <li><strong>Timing Attacks</strong>: Race conditions in multi-currency transfers</li>
+  </ul>
+
+  <h3>Risk Mitigation Strategies</h3>
+  <ul>
+    <li>Use multiple FX oracles for rate consensus</li>
+    <li>Implement time-weighted average prices (TWAP)</li>
+    <li>Add transaction amount limits</li>
+    <li>Include emergency pause mechanisms</li>
+    <li>Implement multi-sig controls for large transfers</li>
+    <li>Add dispute resolution mechanisms</li>
+  </ul>
+
+  <h2 id="12-glossary">12. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Remittance</strong></td><td>Cross-border transfer of money by foreign workers to their home countries</td></tr>
+    <tr><td><strong>Payment Corridor</strong></td><td>Specific currency pair and route for international transfers</td></tr>
+    <tr><td><strong>FX Oracle</strong></td><td>External data source providing foreign exchange rates</td></tr>
+    <tr><td><strong>KYC/AML</strong></td><td>Know Your Customer/Anti-Money Laundering compliance requirements</td></tr>
+    <tr><td><strong>Reference Input</strong></td><td>UTxO referenced but not spent, used for data access</td></tr>
+    <tr><td><strong>Exchange Rate</strong></td><td>Price of one currency in terms of another</td></tr>
+    <tr><td><strong>Escrow</strong></td><td>Funds held by third party during transaction process</td></tr>
+    <tr><td><strong>Settlement</strong></td><td>Completion of fund transfer between parties</td></tr>
+    <tr><td><strong>Compliance</strong></td><td>Adherence to legal and regulatory requirements</td></tr>
+    <tr><td><strong>Cross-Border</strong></td><td>Transactions occurring between different countries</td></tr>
+    <tr><td><strong>Remittance Fee</strong></td><td>Cost charged for processing international transfers</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For real-world deployment, consider adding:
+    <ul>
+      <li>Multi-oracle consensus for FX rates</li>
+      <li>Dynamic fee structures</li>
+      <li>Transaction limits and velocity controls</li>
+      <li>Multi-currency support beyond ADA</li>
+      <li>Dispute resolution and arbitration</li>
+      <li>Insurance mechanisms for failed transfers</li>
+      <li>Integration with traditional banking rails</li>
+      <li>Mobile money and digital wallet compatibility</li>
+    </ul>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Liquidation Auction Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .success {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .auction-mode {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid #ff9800;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .state-machine {
+      background: #fff;
+      border: 2px solid #002b45;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .state {
+      background: #002b45;
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .bid-example {
+      background: #f0f7ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid #2196f3;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>⚖️ Liquidation Auction Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Liquidation Auction smart contract, which implements a sophisticated auction mechanism for liquidating under-collateralized positions in DeFi protocols. The contract supports both surplus and deficit auction modes, enabling efficient price discovery and collateral recovery during liquidation events.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-auction-modes">🎯 Auction Modes</a></li>
+    <li><a href="#5-auction-actions">⚡ Auction Actions</a></li>
+    <li><a href="#6-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#7-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#8-auction-workflow">🔄 Auction Workflow</a></li>
+    <li><a href="#9-bidding-mechanics">💰 Bidding Mechanics</a></li>
+    <li><a href="#10-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#11-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#12-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Liquidation Auction smart contract implements a robust auction system designed for DeFi liquidations that:</p>
+
+  <ul>
+    <li><strong>Supports dual auction modes</strong> for different liquidation scenarios</li>
+    <li><strong>Enables competitive bidding</strong> with minimum increment requirements</li>
+    <li><strong>Provides time-bound operations</strong> with precise auction scheduling</li>
+    <li><strong>Ensures fair price discovery</strong> through transparent bidding</li>
+    <li><strong>Includes safety mechanisms</strong> for auction cancellation when needed</li>
+  </ul>
+
+  <div class="note">
+    <strong>DeFi Infrastructure:</strong> This contract serves as critical infrastructure for decentralized lending protocols, ensuring that under-collateralized positions can be liquidated efficiently while maximizing recovery for the protocol.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>POSIXTime</code>, <code>Value</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations for auction scheduling</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: Multi-asset value operations</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>AuctionMode</code></h3>
+  <p>Defines the two fundamental auction types for different liquidation scenarios:</p>
+  <pre><code>data AuctionMode = Surplus | Deficit</code></pre>
+
+  <div class="auction-mode">
+    <h4>Surplus vs Deficit Auctions</h4>
+    <p><strong>Surplus Auction</strong>: Selling collateral assets to cover bad debt<br>
+    <strong>Deficit Auction</strong>: Minting protocol tokens to recapitalize the system</p>
+  </div>
+
+  <h3><code>AuctionDatum</code></h3>
+  <p>Stores the complete state of an auction instance:</p>
+  <ul>
+    <li><strong>adLot</strong>: The collateral assets being auctioned</li>
+    <li><strong>adQuote</strong>: The bidding currency accepted</li>
+    <li><strong>adStart</strong>: Auction start timestamp</li>
+    <li><strong>adEnd</strong>: Auction end timestamp</li>
+    <li><strong>adMinInc</strong>: Minimum bid increment amount</li>
+    <li><strong>adTopBid</strong>: Current highest bid amount</li>
+    <li><strong>adTopBidder</strong>: Public key hash of highest bidder</li>
+    <li><strong>adMode</strong>: Auction mode (Surplus/Deficit)</li>
+    <li><strong>adKicker</strong>: Entity that initiated the liquidation</li>
+  </ul>
+
+  <pre><code>data AuctionDatum = AuctionDatum
+    { adLot       :: Value
+    , adQuote     :: Value
+    , adStart     :: POSIXTime
+    , adEnd       :: POSIXTime
+    , adMinInc    :: Integer
+    , adTopBid    :: Integer
+    , adTopBidder :: PubKeyHash
+    , adMode      :: AuctionMode
+    , adKicker    :: PubKeyHash
+    }</code></pre>
+
+  <h3>Auction Parameters</h3>
+  <table>
+    <tr><th>Parameter</th><th>Purpose</th><th>Example Value</th></tr>
+    <tr><td>adLot</td><td>Collateral being sold</td><td>1000 ADA</td></tr>
+    <tr><td>adQuote</td><td>Bidding currency</td><td>USDC stablecoin</td></tr>
+    <tr><td>adMinInc</td><td>Minimum bid increase</td><td>100 (1% of initial)</td></tr>
+    <tr><td>adStart/End</td><td>Auction duration</td><td>24-hour window</td></tr>
+  </table>
+
+  <h2 id="4-auction-modes">4. 🎯 Auction Modes</h2>
+
+  <h3>Surplus Auction Mode</h3>
+  <p><strong>Purpose:</strong> Sell excess collateral to cover bad debt</p>
+  <ul>
+    <li>✅ Collateral assets are sold for stablecoins</li>
+    <li>✅ Protocol receives stablecoins to cover losses</li>
+    <li>✅ Bidder receives collateral at discounted price</li>
+    <li>🔄 Typical in over-collateralized lending</li>
+  </ul>
+
+  <h3>Deficit Auction Mode</h3>
+  <p><strong>Purpose:</strong> Mint protocol tokens to recapitalize system</p>
+  <ul>
+    <li>✅ Protocol mints new tokens to sell</li>
+    <li>✅ Protocol receives stablecoins to cover losses</li>
+    <li>✅ Bidder receives protocol tokens</li>
+    <li>🔄 Used when collateral insufficient to cover debt</li>
+  </ul>
+
+  <h2 id="5-auction-actions">5. ⚡ Auction Actions</h2>
+
+  <h3><code>AuctionAction</code></h3>
+  <p>Defines the three core operations for auction management:</p>
+
+  <div class="success">
+    <strong>Bid amount bidder</strong><br>
+    Place a new bid in the auction. Must meet minimum increment requirements and occur during active bidding period.
+  </div>
+
+  <div class="info">
+    <strong>Settle</strong><br>
+    Finalize the auction after bidding ends. Transfers assets to winning bidder and proceeds to protocol.
+  </div>
+
+  <div class="danger">
+    <strong>Cancel</strong><br>
+    Emergency cancellation of auction. Only executable by the original kicker under special circumstances.
+  </div>
+
+  <h2 id="6-helper-functions">6. 🔧 Helper Functions</h2>
+
+  <h3><code>withinTime</code></h3>
+  <pre><code>{-# INLINABLE withinTime #-}
+withinTime :: POSIXTime -> POSIXTime -> POSIXTime -> Bool
+withinTime start end now = Interval.contains (Interval.interval start end) (Interval.singleton now)</code></pre>
+  <p>Validates that a timestamp falls within the auction's active bidding period.</p>
+
+  <h3><code>signedBy</code></h3>
+  <pre><code>{-# INLINABLE signedBy #-}
+signedBy :: PubKeyHash -> ScriptContext -> Bool
+signedBy pkh ctx = txSignedBy (scriptContextTxInfo ctx) pkh</code></pre>
+  <p>Checks if transaction is signed by specified public key hash.</p>
+
+  <h3><code>bidValid</code></h3>
+  <pre><code>{-# INLINABLE bidValid #-}
+bidValid :: Integer -> Integer -> Integer -> Bool
+bidValid newBid topBid minInc = newBid >= topBid + minInc</code></pre>
+  <p>Validates that a new bid meets minimum increment requirements over current top bid.</p>
+
+  <h2 id="7-core-validator-logic">7. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkValidator</code></h3>
+  <p>The main validation function that enforces auction rules across all operations:</p>
+
+  <h4>Bid Validation</h4>
+  <ul>
+    <li>✅ Auction must be active (within start-end time)</li>
+    <li>✅ New bid must meet minimum increment requirement</li>
+    <li>❌ Fails if auction not active (before start or after end)</li>
+    <li>❌ Fails if bid increment too small</li>
+  </ul>
+
+  <h4>Settle Validation</h4>
+  <ul>
+    <li>✅ Auction must have ended</li>
+    <li>✅ Can be executed by anyone after end time</li>
+    <li>❌ Fails if auction still active</li>
+  </ul>
+
+  <h4>Cancel Validation</h4>
+  <ul>
+    <li>✅ Must be signed by original kicker</li>
+    <li>✅ Emergency mechanism for special cases</li>
+    <li>❌ Fails if not signed by kicker</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Time Validation:</strong> The current time is extracted from the transaction's valid range upper bound, ensuring accurate timing validation for auction operations.
+  </div>
+
+  <h2 id="8-auction-workflow">8. 🔄 Auction Workflow</h2>
+
+  <div class="workflow">
+    <h3>Complete Auction Lifecycle</h3>
+
+    <div class="state-machine">
+      <div class="state">🚀 Auction Creation</div>
+      
+      <h4>1. Auction Initialization</h4>
+      <pre><code>AuctionDatum {
+  adLot = 1000 ADA,
+  adQuote = USDC,
+  adStart = 1672531200,  -- Jan 1, 2023 00:00:00
+  adEnd = 1672617600,    -- Jan 2, 2023 00:00:00 (24 hours)
+  adMinInc = 100,        -- 100 USDC minimum increment
+  adTopBid = 0,
+  adTopBidder = "kicker_pkh",
+  adMode = Surplus,
+  adKicker = "kicker_pkh"
+}</code></pre>
+
+      <div class="state">⏰ Active Bidding Period</div>
+
+      <h4>2. First Valid Bid</h4>
+      <pre><code>Action: Bid 9000 "bidder1_pkh"  -- 9000 USDC
+Validation:
+  - Current time: 1672534800 (within auction period) ✅
+  - Bid: 9000 ≥ 0 + 100 ✅
+New State: adTopBid = 9000, adTopBidder = "bidder1_pkh"</code></pre>
+
+      <h4>3. Competitive Bidding</h4>
+      <pre><code>Action: Bid 9200 "bidder2_pkh"
+Validation:
+  - Within auction period ✅
+  - 9200 ≥ 9000 + 100 ✅
+New State: adTopBid = 9200, adTopBidder = "bidder2_pkh"</code></pre>
+
+      <h4>4. Invalid Bid Attempt</h4>
+      <pre><code>Action: Bid 9250 "bidder3_pkh"
+Validation:
+  - Within auction period ✅
+  - 9250 ≥ 9200 + 100 ❌ (insufficient increment)
+Result: Transaction rejected</code></pre>
+
+      <h4>5. Successful Higher Bid</h4>
+      <pre><code>Action: Bid 9500 "bidder1_pkh"
+Validation:
+  - Within auction period ✅
+  - 9500 ≥ 9200 + 100 ✅
+New State: adTopBid = 9500, adTopBidder = "bidder1_pkh"</code></pre>
+
+      <div class="state">🏁 Auction Ended</div>
+
+      <h4>6. Final Settlement</h4>
+      <pre><code>Action: Settle
+Validation:
+  - Current time: 1672617601 (after end time) ✅
+Result: 1000 ADA to bidder1_pkh, 9500 USDC to protocol</code></pre>
+
+      <h4>7. Emergency Cancellation Scenario</h4>
+      <pre><code>Action: Cancel
+Validation:
+  - Signed by kicker_pkh ✅
+  - (Only in special circumstances)
+Result: Auction cancelled, collateral returned</code></pre>
+    </div>
+  </div>
+
+  <h2 id="9-bidding-mechanics">9. 💰 Bidding Mechanics</h2>
+
+  <h3>Bid Validation Rules</h3>
+  <div class="bid-example">
+    <h4>Minimum Increment Formula</h4>
+    <pre><code>New Bid ≥ Current Top Bid + Minimum Increment</code></pre>
+    
+    <h4>Example Bidding Sequence</h4>
+    <pre><code>Initial:     Top Bid = 0, Min Inc = 100
+Bid 1:       1000 ≥ 0 + 100 ✅ ACCEPTED
+Bid 2:       1050 ≥ 1000 + 100 ❌ REJECTED (too small)
+Bid 3:       1150 ≥ 1000 + 100 ✅ ACCEPTED  
+Bid 4:       1300 ≥ 1150 + 100 ✅ ACCEPTED
+Bid 5:       1350 ≥ 1300 + 100 ❌ REJECTED (too small)
+Bid 6:       1450 ≥ 1300 + 100 ✅ ACCEPTED</code></pre>
+  </div>
+
+  <h3>Bidding Strategies</h3>
+  <table>
+    <tr><th>Strategy</th><th>Approach</th><th>Risk Level</th></tr>
+    <tr><td>Sniping</td><td>Bid at last moment</td><td>High risk, high reward</td></tr>
+    <tr><td>Incremental</td><td>Small increases</td><td>Low risk, may lose to snipers</td></tr>
+    <tr><td>Aggressive</td><td>Large overbids</td><td>Deters competition, higher cost</td></tr>
+  </table>
+
+  <h3>Auction Economics</h3>
+  <ul>
+    <li><strong>Discount Mechanism</strong>: Collateral typically sells below market value</li>
+    <li><strong>Liquidation Premium</strong>: Compensation for liquidators' risk and effort</li>
+    <li><strong>Protocol Recovery</strong>: Maximizes value recovered for the lending protocol</li>
+    <li><strong>Market Efficiency</strong>: Competitive bidding ensures fair price discovery</li>
+  </ul>
+
+  <h2 id="10-script-compilation">10. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkValidatorUntyped #-}
+mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidatorUntyped d r c =
+    let dat = unsafeFromBuiltinData @AuctionDatum d
+        red = unsafeFromBuiltinData @AuctionAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkValidator dat red ctx then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])</code></pre>
+
+  <h2 id="11-practical-usage">11. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the auction validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+
+    writeValidator "auction.plutus" validator
+
+    let vh      = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32  = toBech32ScriptAddress network validator
+
+    putStrLn "\n--- Liquidation Auction Validator ---"
+    putStrLn $ "Validator Hash (Plutus): " <> P.show vh
+    putStrLn $ "Plutus Script Address:    " <> P.show onchain
+    putStrLn $ "Bech32 Script Address:    " <> bech32
+    putStrLn "---------------------------------"</code></pre>
+
+  <h3>Integration with Lending Protocols</h3>
+  <pre><code>-- Example: Start Liquidation Auction
+startAuction :: Value -> Value -> POSIXTime -> POSIXTime -> Integer -> AuctionMode -> PubKeyHash -> Tx
+startAuction lot quote start end minInc mode kicker = ...
+
+-- Example: Place Bid  
+placeBid :: ValidatorHash -> Integer -> PubKeyHash -> Tx
+placeBid valHash amount bidder = ...
+
+-- Example: Settle Auction
+settleAuction :: ValidatorHash -> Tx
+settleAuction valHash = ...
+
+-- Example: Cancel Auction
+cancelAuction :: ValidatorHash -> PubKeyHash -> Tx
+cancelAuction valHash kicker = ...</code></pre>
+
+  <h2 id="12-glossary">12. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Liquidation Auction</strong></td><td>Auction mechanism for selling collateral from under-collateralized positions</td></tr>
+    <tr><td><strong>Surplus Auction</strong></td><td>Selling excess collateral to cover bad debt</td></tr>
+    <tr><td><strong>Deficit Auction</strong></td><td>Minting protocol tokens to recapitalize the system</td></tr>
+    <tr><td><strong>Kicker</strong></td><td>Entity that initiates the liquidation process</td></tr>
+    <tr><td><strong>Lot</strong></td><td>Collateral assets being auctioned</td></tr>
+    <tr><td><strong>Quote</strong></td><td>Bidding currency accepted in the auction</td></tr>
+    <tr><td><strong>Minimum Increment</strong></td><td>Smallest allowed increase over current highest bid</td></tr>
+    <tr><td><strong>Top Bid</strong></td><td>Current highest bid amount in the auction</td></tr>
+    <tr><td><strong>Bidder</strong></td><td>Participant placing bids in the auction</td></tr>
+    <tr><td><strong>Settlement</strong></td><td>Finalizing auction and transferring assets</td></tr>
+    <tr><td><strong>Price Discovery</strong></td><td>Process of determining market price through competitive bidding</td></tr>
+    <tr><td><strong>Liquidation Premium</strong></td><td>Discount received by liquidators for taking risk</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For enterprise DeFi deployment, consider adding:
+    <ul>
+      <li>Dutch auction decreasing price mechanisms</li>
+      <li>Multi-lot auctions for large positions</li>
+      <li>Bid refund mechanisms for outbid participants</li>
+      <li>Oracle integration for fair market pricing</li>
+      <li>Flash loan support for bidding capital</li>
+      <li>Anti-sniping protection mechanisms</li>
+      <li>Multi-asset lot and quote support</li>
+      <li>Cross-protocol liquidation coordination</li>
+    </ul>
+  </div>
+
+</body>
+</html>

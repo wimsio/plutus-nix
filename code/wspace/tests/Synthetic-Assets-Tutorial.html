@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Synthetic Asset Vault Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .success {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .math-formula {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: "Cambria Math", serif;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .state-machine {
+      background: #fff;
+      border: 2px solid #002b45;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .state {
+      background: #002b45;
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .oracle-system {
+      background: #f0f7ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid #2196f3;
+    }
+    .collateral-calculation {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🔄 Synthetic Asset Vault Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Synthetic Asset Vault smart contract, which implements a sophisticated system for creating and managing synthetic assets (synths) backed by collateral. The contract enables users to mint synthetic assets by locking collateral, with real-time price feeds from oracles and automated liquidation mechanisms to maintain system solvency.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-synth-actions">🎯 Synthetic Asset Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-oracle-system">🔮 Oracle System</a></li>
+    <li><a href="#7-collateral-mechanics">💰 Collateral Mechanics</a></li>
+    <li><a href="#8-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#9-vault-lifecycle">🔄 Vault Lifecycle</a></li>
+    <li><a href="#10-risk-management">⚠️ Risk Management</a></li>
+    <li><a href="#11-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#12-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#13-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Synthetic Asset Vault smart contract implements a comprehensive system for synthetic asset creation that:</p>
+
+  <ul>
+    <li><strong>Enables synthetic asset minting</strong> by locking collateral</li>
+    <li><strong>Integrates real-time price oracles</strong> for accurate valuation</li>
+    <li><strong>Maintains collateralization ratios</strong> to ensure system safety</li>
+    <li><strong>Automates liquidation processes</strong> for under-collateralized positions</li>
+    <li><strong>Supports dynamic price updates</strong> through authorized oracles</li>
+  </ul>
+
+  <div class="note">
+    <strong>Synthetic Assets:</strong> Synthetic assets (synths) are tokenized derivatives that track the price of real-world assets like stocks, commodities, or indices, enabling decentralized exposure to traditional markets.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>POSIXTime</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>, <code>txInfoReferenceInputs</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: Token value operations</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>SynthVault</code></h3>
+  <p>Stores the state of each synthetic asset vault:</p>
+  <ul>
+    <li><strong>svOwner</strong>: Vault owner's public key hash</li>
+    <li><strong>svCollateral</strong>: Amount of ADA locked as collateral</li>
+    <li><strong>svDebt</strong>: Amount of synthetic assets minted</li>
+    <li><strong>svMinRatio</strong>: Minimum collateralization ratio (e.g., 150 = 150%)</li>
+  </ul>
+
+  <pre><code>data SynthVault = SynthVault
+    { svOwner      :: PubKeyHash
+    , svCollateral :: Integer     -- ADA locked
+    , svDebt       :: Integer     -- sASSET minted
+    , svMinRatio   :: Integer     -- e.g. 150% = 150
+    }</code></pre>
+
+  <h3><code>PriceDatum</code></h3>
+  <p>Stores oracle price feed information:</p>
+  <ul>
+    <li><strong>pdPrice</strong>: Current price in lovelace per synthetic unit</li>
+    <li><strong>pdOracle</strong>: Oracle provider's public key hash</li>
+    <li><strong>pdUpdated</strong>: Timestamp of last price update</li>
+  </ul>
+
+  <pre><code>data PriceDatum = PriceDatum
+    { pdPrice   :: Integer        -- price in lovelace per index unit
+    , pdOracle  :: PubKeyHash     -- oracle signer
+    , pdUpdated :: POSIXTime      -- timestamp
+    }</code></pre>
+
+  <h2 id="4-synth-actions">4. 🎯 Synthetic Asset Actions</h2>
+
+  <h3><code>SynthAction</code></h3>
+  <p>Defines the four core operations for synthetic asset management:</p>
+
+  <div class="success">
+    <strong>MintSynth amount</strong><br>
+    Create new synthetic assets by locking additional collateral. Requires owner authorization and maintains minimum collateral ratio.
+  </div>
+
+  <div class="info">
+    <strong>BurnSynth amount</strong><br>
+    Destroy synthetic assets to reduce debt and potentially unlock collateral. Requires owner authorization.
+  </div>
+
+  <div class="warning">
+    <strong>UpdatePrice</strong><br>
+    Refresh the price feed from the oracle. Requires oracle provider signature.
+  </div>
+
+  <div class="danger">
+    <strong>Liquidate</strong><br>
+    Force closure of under-collateralized vaults. Can be executed by anyone when collateral ratio falls below minimum.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>getRefOracle</code></h3>
+  <pre><code>{-# INLINABLE getRefOracle #-}
+getRefOracle :: ScriptContext -> PriceDatum
+getRefOracle ctx =
+    case findDatum' of
+      Just d  -> d
+      Nothing -> traceError "no oracle ref input"</code></pre>
+  <p>Retrieves the current price datum from reference inputs.</p>
+
+  <h3><code>ratioOK</code></h3>
+  <pre><code>{-# INLINABLE ratioOK #-}
+ratioOK :: Integer -> Integer -> Integer -> Bool
+ratioOK collateral debt minRatio =
+    if debt == 0 then True else collateral * 100 >= debt * minRatio</code></pre>
+  <p>Validates that the collateralization ratio meets minimum requirements.</p>
+
+  <h3><code>lowerBoundTime</code></h3>
+  <pre><code>{-# INLINABLE lowerBoundTime #-}
+lowerBoundTime :: POSIXTimeRange -> POSIXTime
+lowerBoundTime r =
+    case ivFrom r of
+        LowerBound (Finite t) _ -> t
+        _                       -> traceError "invalid lower bound"</code></pre>
+  <p>Extracts the transaction timestamp from the valid range.</p>
+
+  <h2 id="6-oracle-system">6. 🔮 Oracle System</h2>
+
+  <div class="oracle-system">
+    <h3>Real-Time Price Feed Architecture</h3>
+
+    <h4>Oracle Data Structure</h4>
+    <pre><code>PriceDatum Example:
+{
+  pdPrice: 2500000,      -- 2.5 ADA per synthetic unit
+  pdOracle: "oracle_pkh", -- Authorized oracle provider
+  pdUpdated: 1672531200  -- Last update timestamp
+}</code></pre>
+
+    <h4>Price Freshness Validation</h4>
+    <pre><code>Freshness Check:
+  Current Time ≥ (Last Update + 30000)  -- 30-second freshness window
+  Example: 1672531230 ≥ (1672531200 + 30) = 1672531230 ✅ FRESH</code></pre>
+
+    <h4>Oracle Authorization</h4>
+    <ul>
+      <li>Only authorized oracle providers can update prices</li>
+      <li>Price updates require oracle signature verification</li>
+      <li>Stale prices prevent minting and liquidation operations</li>
+    </ul>
+  </div>
+
+  <h2 id="7-collateral-mechanics">7. 💰 Collateral Mechanics</h2>
+
+  <h3>Collateralization Ratio Formula</h3>
+  <div class="math-formula">
+    Collateral Ratio = (Collateral Value × 100) ÷ (Debt × Price)
+  </div>
+
+  <div class="collateral-calculation">
+    <h3>Minting Calculation Example</h3>
+    <pre><code>Given:
+  Current Price: 2.5 ADA per synth
+  Minimum Ratio: 150%
+  Desired Mint: 1000 synths
+
+Calculation:
+  Required Collateral = (Debt × Price × MinRatio) ÷ 100
+  Required Collateral = (1000 × 2.5 × 150) ÷ 100 = 3750 ADA
+
+Verification:
+  Collateral Ratio = (3750 × 100) ÷ (1000 × 2.5) = 150% ✅</code></pre>
+  </div>
+
+  <h3>Collateral Ratio Scenarios</h3>
+  <table>
+    <tr><th>Scenario</th><th>Collateral</th><th>Debt</th><th>Price</th><th>Ratio</th><th>Status</th></tr>
+    <tr><td>Healthy</td><td>3750 ADA</td><td>1000 synths</td><td>2.5 ADA</td><td>150%</td><td>✅ Safe</td></tr>
+    <tr><td>Warning</td><td>3000 ADA</td><td>1000 synths</td><td>2.5 ADA</td><td>120%</td><td>⚠️ At Risk</td></tr>
+    <tr><td>Liquidation</td><td>2000 ADA</td><td>1000 synths</td><td>2.5 ADA</td><td>80%</td><td>❌ Liquidatable</td></tr>
+  </table>
+
+  <h2 id="8-core-validator-logic">8. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkValidator</code></h3>
+  <p>The main validation function that enforces synthetic asset rules:</p>
+
+  <h4>MintSynth Validation</h4>
+  <ul>
+    <li>✅ Must be signed by vault owner</li>
+    <li>✅ Oracle price must be fresh (within 30 seconds)</li>
+    <li>✅ New collateral ratio must meet minimum requirement</li>
+    <li>✅ Output datum must reflect correct new debt amount</li>
+    <li>❌ Fails if owner signature missing</li>
+    <li>❌ Fails if stale oracle data</li>
+    <li>❌ Fails if insufficient collateral</li>
+  </ul>
+
+  <h4>BurnSynth Validation</h4>
+  <ul>
+    <li>✅ Must be signed by vault owner</li>
+    <li>✅ Output datum must reflect correct reduced debt</li>
+    <li>❌ Fails if owner signature missing</li>
+    <li>❌ Fails if burning more than current debt</li>
+  </ul>
+
+  <h4>UpdatePrice Validation</h4>
+  <ul>
+    <li>✅ Must be signed by authorized oracle</li>
+    <li>❌ Fails if not oracle signature</li>
+  </ul>
+
+  <h4>Liquidate Validation</h4>
+  <ul>
+    <li>✅ Collateral ratio must be below minimum</li>
+    <li>✅ Oracle price must be fresh</li>
+    <li>✅ Can be executed by anyone</li>
+    <li>❌ Fails if vault is properly collateralized</li>
+    <li>❌ Fails if stale oracle data</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Reference Inputs:</strong> The contract uses reference inputs to efficiently read oracle data without spending the oracle UTxO, enabling multiple vaults to use the same price feed simultaneously.
+  </div>
+
+  <h2 id="9-vault-lifecycle">9. 🔄 Vault Lifecycle</h2>
+
+  <div class="workflow">
+    <h3>Complete Vault Management Process</h3>
+
+    <div class="state-machine">
+      <div class="state">🚀 Vault Creation</div>
+      
+      <h4>1. Initial Vault Setup</h4>
+      <pre><code>SynthVault {
+  svOwner: "user_pkh",
+  svCollateral: 0,
+  svDebt: 0,
+  svMinRatio: 150
+}</code></pre>
+
+      <h4>2. First Synthetic Minting</h4>
+      <pre><code>Action: MintSynth 1000
+Oracle Price: 2.5 ADA/synth
+Required Collateral: (1000 × 2.5 × 150) ÷ 100 = 3750 ADA
+Validation:
+  - Owner signature ✅
+  - Fresh oracle data ✅
+  - Sufficient collateral ✅
+New State: svCollateral = 3750, svDebt = 1000</code></pre>
+
+      <h4>3. Additional Minting</h4>
+      <pre><code>Action: MintSynth 500
+Required Collateral: (500 × 2.5 × 150) ÷ 100 = 1875 ADA
+Total: svCollateral = 5625, svDebt = 1500
+Current Ratio: (5625 × 100) ÷ (1500 × 2.5) = 150% ✅</code></pre>
+
+      <h4>4. Price Update by Oracle</h4>
+      <pre><code>Action: UpdatePrice
+New Price: 3.0 ADA/synth (20% increase)
+Validation:
+  - Oracle signature ✅
+Result: Price updated to 3.0 ADA/synth</code></pre>
+
+      <h4>5. Improved Collateral Ratio</h4>
+      <pre><code>New Ratio Calculation:
+  (5625 × 100) ÷ (1500 × 3.0) = 125%
+Status: Ratio improved due to price increase</code></pre>
+
+      <h4>6. Partial Debt Reduction</h4>
+      <pre><code>Action: BurnSynth 500
+Validation:
+  - Owner signature ✅
+New State: svDebt = 1000
+New Ratio: (5625 × 100) ÷ (1000 × 3.0) = 187.5% ✅</code></pre>
+
+      <div class="state">⚡ Price Volatility Scenario</div>
+
+      <h4>7. Price Drop Scenario</h4>
+      <pre><code>Oracle Update: Price drops to 1.5 ADA/synth
+Current Ratio: (5625 × 100) ÷ (1000 × 1.5) = 375% ✅ Still safe</code></pre>
+
+      <h4>8. Severe Price Crash</h4>
+      <pre><code>Oracle Update: Price crashes to 0.8 ADA/synth
+Current Ratio: (5625 × 100) ÷ (1000 × 0.8) = 70% ❌ BELOW MINIMUM</code></pre>
+
+      <h4>9. Liquidation Triggered</h4>
+      <pre><code>Action: Liquidate
+Validation:
+  - Current ratio 70% < min 150% ✅
+  - Fresh oracle data ✅
+Result: Vault liquidated, collateral seized</code></pre>
+
+      <div class="state">💸 Liquidation Executed</div>
+    </div>
+  </div>
+
+  <h2 id="10-risk-management">10. ⚠️ Risk Management</h2>
+
+  <h3>Systemic Risks</h3>
+  <ul>
+    <li><strong>Oracle Manipulation</strong>: Malicious price feed manipulation</li>
+    <li><strong>Price Feed Failure</strong>: Oracle downtime or network issues</li>
+    <li><strong>Collateral Volatility</strong>: Rapid ADA price movements</li>
+    <li><strong>Liquidation Cascades</strong>: Multiple liquidations affecting market</li>
+  </ul>
+
+  <h3>User Risks</h3>
+  <ul>
+    <li><strong>Liquidation Risk</strong>: Loss of collateral due to ratio breaches</li>
+    <li><strong>Oracle Risk</strong>: Dependence on accurate price feeds</li>
+    <li><strong>Market Timing Risk</strong>: Minting before collateral value drops</li>
+    <li><strong>Gas Cost Risk</strong>: Transaction costs during volatile periods</li>
+  </ul>
+
+  <h3>Risk Mitigation Strategies</h3>
+  <ul>
+    <li>Use multiple independent oracles for price consensus</li>
+    <li>Implement circuit breakers during extreme volatility</li>
+    <li>Set conservative collateralization ratios (150%+)</li>
+    <li>Provide real-time ratio monitoring and alerts</li>
+    <li>Implement gradual liquidation for large positions</li>
+  </ul>
+
+  <h2 id="11-script-compilation">11. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkValidatorUntyped #-}
+mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidatorUntyped d r c =
+    let dat = unsafeFromBuiltinData @SynthVault d
+        red = unsafeFromBuiltinData @SynthAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkValidator dat red ctx then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])</code></pre>
+
+  <h2 id="12-practical-usage">12. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the synthetic asset validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+
+    writeValidator "synth-validator.plutus" validator
+
+    let vh     = plutusValidatorHash validator
+        addr   = plutusScriptAddress
+        bech32 = toBech32ScriptAddress network validator
+
+    putStrLn "\n--- Synthetic Asset Validator Info ---"
+    putStrLn $ "Validator Hash: " <> P.show vh
+    putStrLn $ "Plutus Address: " <> P.show addr
+    putStrLn $ "Bech32 Address: " <> bech32
+    putStrLn "---------------------------------------"</code></pre>
+
+  <h3>Integration with Oracle Systems</h3>
+  <pre><code>-- Example: Oracle Price Update
+updatePriceFeed :: PubKeyHash -> Integer -> POSIXTime -> Tx
+updatePriceFeed oracle price timestamp = ...
+
+-- Example: Mint Synthetic Assets
+mintSynthetic :: ValidatorHash -> Integer -> Integer -> Tx
+mintSynthetic valHash synthAmount collateralAmount = ...
+
+-- Example: Monitor Vault Health
+checkVaultHealth :: ValidatorHash -> PubKeyHash -> (Double, Bool)
+checkVaultHealth valHash owner = ...  -- Returns ratio and safety status</code></pre>
+
+  <h2 id="13-glossary">13. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Synthetic Asset (Synth)</strong></td><td>Tokenized derivative tracking price of real-world asset</td></tr>
+    <tr><td><strong>Collateralization Ratio</strong></td><td>Ratio of collateral value to synthetic debt value</td></tr>
+    <tr><td><strong>Oracle</strong></td><td>External data provider supplying price feeds</td></tr>
+    <tr><td><strong>Reference Input</strong></td><td>UTxO referenced but not spent, used for data access</td></tr>
+    <tr><td><strong>Minting</strong></td><td>Creating new synthetic assets against collateral</td></tr>
+    <tr><td><strong>Burning</strong></td><td>Destroying synthetic assets to reduce debt</td></tr>
+    <tr><td><strong>Liquidation</strong></td><td>Forced closure of under-collateralized positions</td></tr>
+    <tr><td><strong>Price Feed</strong></td><td>Real-time price data from oracle providers</td></tr>
+    <tr><td><strong>Collateral</strong></td><td>Assets locked to secure synthetic debt</td></tr>
+    <tr><td><strong>Debt</strong></td><td>Amount of synthetic assets minted and outstanding</td></tr>
+    <tr><td><strong>Minimum Ratio</strong></td><td>Lowest allowed collateralization percentage</td></tr>
+    <tr><td><strong>Freshness Window</strong></td><td>Time period during which oracle data is considered valid</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For enterprise synthetic asset platforms, consider adding:
+    <ul>
+      <li>Multi-oracle consensus mechanisms</li>
+      <li>Different synthetic asset types (stocks, commodities, indices)</li>
+      <li>Cross-collateralization across multiple assets</li>
+      <li>Dynamic fee structures and stability mechanisms</li>
+      <li>Insurance funds for protocol solvency</li>
+      <li>Governance mechanisms for parameter adjustments</li>
+      <li>Advanced liquidation auctions with bidding</li>
+      <li>Integration with traditional finance data providers</li>
+    </ul>
+  </div>
+
+</body>
+</html>

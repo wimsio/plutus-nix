@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Milestone Escrow Crowdfunding Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+  color: #0077cc;
+  text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .success {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .state-machine {
+      background: #fff;
+      border: 2px solid #002b45;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .state {
+      background: #002b45;
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .campaign-example {
+      background: #f0f7ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid #2196f3;
+    }
+    .pledge-stats {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎯 Milestone Escrow Crowdfunding Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Milestone Escrow Crowdfunding smart contract, which implements a sophisticated crowdfunding platform with milestone-based fund release. The contract ensures that project creators receive funds gradually as they achieve development milestones, while backers are protected through automatic refunds if funding goals aren't met.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-crowdfunding-actions">🎯 Crowdfunding Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#7-crowdfunding-workflow">🔄 Crowdfunding Workflow</a></li>
+    <li><a href="#8-funding-scenarios">💰 Funding Scenarios</a></li>
+    <li><a href="#9-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#10-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#11-risk-management">⚠️ Risk Management</a></li>
+    <li><a href="#12-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Milestone Escrow Crowdfunding smart contract implements a secure crowdfunding platform that:</p>
+
+  <ul>
+    <li><strong>Enables milestone-based funding</strong> with gradual fund release</li>
+    <li><strong>Protects backers</strong> through automatic refunds for failed campaigns</li>
+    <li><strong>Ensures creator accountability</strong> by requiring milestone completion</li>
+    <li><strong>Provides transparent tracking</strong> of campaign progress and funds</li>
+    <li><strong>Supports flexible campaigns</strong> with customizable targets and deadlines</li>
+  </ul>
+
+  <div class="note">
+    <strong>Crowdfunding Innovation:</strong> This contract addresses the key challenges in traditional crowdfunding by providing escrow protection for backers while ensuring creators receive funds as they deliver on promises.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>POSIXTime</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>, <code>txInfoMint</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations for deadline management</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: Token value operations (<code>valueOf</code>, <code>adaSymbol</code>, <code>adaToken</code>)</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>CampaignDatum</code></h3>
+  <p>Stores the global state of a crowdfunding campaign:</p>
+  <ul>
+    <li><strong>cdCreator</strong>: Project creator's public key hash</li>
+    <li><strong>cdTarget</strong>: Total funding target in lovelace</li>
+    <li><strong>cdDeadline</strong>: Campaign end timestamp</li>
+    <li><strong>cdRaised</strong>: Total amount pledged so far</li>
+    <li><strong>cdMilestoneIdx</strong>: Current milestone index for fund release</li>
+  </ul>
+
+  <pre><code>data CampaignDatum = CampaignDatum
+    { cdCreator      :: PubKeyHash
+    , cdTarget       :: Integer
+    , cdDeadline     :: POSIXTime
+    , cdRaised       :: Integer
+    , cdMilestoneIdx :: Integer
+    }</code></pre>
+
+  <h3><code>PledgeDatum</code></h3>
+  <p>Stores individual backer contributions:</p>
+  <ul>
+    <li><strong>pdBacker</strong>: Backer's public key hash</li>
+    <li><strong>pdAmount</strong>: Pledged amount in lovelace</li>
+  </ul>
+
+  <pre><code>data PledgeDatum = PledgeDatum
+    { pdBacker :: PubKeyHash
+    , pdAmount :: Integer
+    }</code></pre>
+
+  <h3>Campaign Parameters</h3>
+  <table>
+    <tr><th>Parameter</th><th>Purpose</th><th>Example Value</th></tr>
+    <tr><td>cdTarget</td><td>Funding goal</td><td>50,000 ADA (50M lovelace)</td></tr>
+    <tr><td>cdDeadline</td><td>Campaign duration</td><td>30 days from launch</td></tr>
+    <tr><td>cdMilestoneIdx</td><td>Progress tracking</td><td>0-4 (5 milestones)</td></tr>
+  </table>
+
+  <h2 id="4-crowdfunding-actions">4. 🎯 Crowdfunding Actions</h2>
+
+  <h3><code>EscrowAction</code></h3>
+  <p>Defines the three core operations for campaign management:</p>
+
+  <div class="success">
+    <strong>Pledge</strong><br>
+    Backers contribute funds to the campaign. Must occur before deadline and increase total raised amount.
+  </div>
+
+  <div class="info">
+    <strong>UnlockMilestone</strong><br>
+    Creator requests fund release for completed milestone. Requires target reached and creator authorization.
+  </div>
+
+  <div class="danger">
+    <strong>Refund</strong><br>
+    Backers reclaim funds if campaign fails. Only available after deadline if target not met.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>afterDeadline</code></h3>
+  <pre><code>{-# INLINABLE afterDeadline #-}
+afterDeadline :: POSIXTime -> ScriptContext -> Bool
+afterDeadline dl ctx = Interval.contains (Interval.from (dl + 1)) (txInfoValidRange info)
+  where info = scriptContextTxInfo ctx</code></pre>
+  <p>Checks if current transaction occurs after the campaign deadline.</p>
+
+  <h3><code>signedBy</code></h3>
+  <pre><code>{-# INLINABLE signedBy #-}
+signedBy :: PubKeyHash -> ScriptContext -> Bool
+signedBy pkh ctx = txSignedBy (scriptContextTxInfo ctx) pkh</code></pre>
+  <p>Validates transaction signature by specific public key hash.</p>
+
+  <h2 id="6-core-validator-logic">6. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkValidator</code></h3>
+  <p>The main validation function that enforces crowdfunding rules:</p>
+
+  <h4>Pledge Validation</h4>
+  <ul>
+    <li>✅ Must occur before campaign deadline</li>
+    <li>✅ Must increase total raised amount</li>
+    <li>✅ Tracks minted ADA for pledge amount</li>
+    <li>❌ Fails if after deadline</li>
+    <li>❌ Fails if no funds added</li>
+  </ul>
+
+  <h4>UnlockMilestone Validation</h4>
+  <ul>
+    <li>✅ Must be signed by campaign creator</li>
+    <li>✅ Funding target must be reached</li>
+    <li>❌ Fails if not creator signature</li>
+    <li>❌ Fails if target not met</li>
+  </ul>
+
+  <h4>Refund Validation</h4>
+  <ul>
+    <li>✅ Must occur after campaign deadline</li>
+    <li>✅ Funding target must NOT be reached</li>
+    <li>❌ Fails if before deadline</li>
+    <li>❌ Fails if target was met</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Note:</strong> The current implementation tracks total raised amount but doesn't show individual pledge handling in the main validator. In production, this would typically involve multiple UTxOs for campaign state and individual pledges.
+  </div>
+
+  <h2 id="7-crowdfunding-workflow">7. 🔄 Crowdfunding Workflow</h2>
+
+  <div class="workflow">
+    <h3>Complete Campaign Lifecycle</h3>
+
+    <div class="state-machine">
+      <div class="state">🚀 Campaign Launch</div>
+      
+      <div class="campaign-example">
+        <h4>Example: Tech Startup Campaign</h4>
+        <pre><code>CampaignDatum {
+  cdCreator = "founder_pkh",
+  cdTarget = 50000000,      -- 50,000 ADA
+  cdDeadline = 1675209600,  -- 30 days from now
+  cdRaised = 0,             -- No pledges yet
+  cdMilestoneIdx = 0        -- Starting milestone
+}</code></pre>
+      </div>
+
+      <h4>1. Early Backer Pledges</h4>
+      <pre><code>Action: Pledge
+Backer: "early_supporter_pkh"
+Amount: 5000000 (5,000 ADA)
+Validation:
+  - Before deadline ✅
+  - Increases raised (0 → 5M) ✅
+New State: cdRaised = 5000000</code></pre>
+
+      <h4>2. Multiple Backers Join</h4>
+      <pre><code>Backer 2: 10000000 (10,000 ADA) - cdRaised = 15M
+Backer 3: 8000000 (8,000 ADA)   - cdRaised = 23M
+Backer 4: 12000000 (12,000 ADA) - cdRaised = 35M</code></pre>
+
+      <h4>3. Final Push Before Deadline</h4>
+      <pre><code>Backer 5: 20000000 (20,000 ADA)
+Validation:
+  - Before deadline ✅
+  - Increases raised (35M → 55M) ✅
+New State: cdRaised = 55000000 ✅ TARGET REACHED!</code></pre>
+
+      <div class="state">🎯 Funding Target Achieved</div>
+
+      <h4>4. Milestone 1 Completion</h4>
+      <pre><code>Action: UnlockMilestone
+Validation:
+  - Creator signature ✅
+  - Target reached (55M ≥ 50M) ✅
+Result: Funds released for milestone 1
+New State: cdMilestoneIdx = 1</code></pre>
+
+      <h4>5. Subsequent Milestones</h4>
+      <pre><code>Milestone 2: Prototype development
+Milestone 3: Beta testing
+Milestone 4: Product launch
+Each requires creator to demonstrate completion</code></pre>
+
+      <div class="state">✅ Campaign Success</div>
+    </div>
+
+    <h3>Alternative: Failed Campaign Scenario</h3>
+    <div class="state-machine">
+      <div class="state">🚫 Campaign Failed</div>
+      
+      <h4>1. Insufficient Funding</h4>
+      <pre><code>Final State Before Deadline:
+  cdRaised = 35000000 (35,000 ADA)
+  cdTarget = 50000000 (50,000 ADA)
+Status: 70% funded - BELOW TARGET</code></pre>
+
+      <h4>2. Deadline Passes</h4>
+      <pre><code>Current time: 1675209601 (after deadline)
+Status: Campaign failed to reach target</code></pre>
+
+      <h4>3. Backer Refunds</h4>
+      <pre><code>Action: Refund (by any backer)
+Validation:
+  - After deadline ✅
+  - Target not reached (35M < 50M) ✅
+Result: Backers can reclaim their pledges</code></pre>
+
+      <div class="state">💸 Funds Returned</div>
+    </div>
+  </div>
+
+  <h2 id="8-funding-scenarios">8. 💰 Funding Scenarios</h2>
+
+  <div class="pledge-stats">
+    <h3>Campaign Funding Outcomes</h3>
+    
+    <table>
+      <tr><th>Scenario</th><th>Raised Amount</th><th>Target</th><th>Outcome</th><th>Actions Available</th></tr>
+      <tr><td>Early Success</td><td>60M ADA</td><td>50M ADA</td><td>✅ Funded</td><td>UnlockMilestone, Continue pledges</td></tr>
+      <tr><td>Last Minute Win</td><td>50M ADA</td><td>50M ADA</td><td>✅ Funded</td><td>UnlockMilestone</td></tr>
+      <tr><td>Partial Funding</td><td>40M ADA</td><td>50M ADA</td><td>❌ Failed</td><td>Refund only</td></tr>
+      <tr><td>No Funding</td><td>0 ADA</td><td>50M ADA</td><td>❌ Failed</td><td>Refund (none to refund)</td></tr>
+    </table>
+  </div>
+
+  <h3>Milestone Release Strategy</h3>
+  <table>
+    <tr><th>Milestone</th><th>Purpose</th><th>Funds Released</th><th>Verification</th></tr>
+    <tr><td>0 (Initial)</td><td>Campaign setup</td><td>0%</td><td>N/A</td></tr>
+    <tr><td>1</td><td>Team formation & planning</td><td>20%</td><td>Team contracts, roadmap</td></tr>
+    <tr><td>2</td><td>Prototype development</td><td>30%</td><td>Working prototype demo</td></tr>
+    <tr><td>3</td><td>Beta testing</td><td>30%</td><td>Beta release, user testing</td></tr>
+    <tr><td>4</td><td>Product launch</td><td>20%</td><td>Final product delivery</td></tr>
+  </table>
+
+  <h2 id="9-script-compilation">9. ⚙️ Script Compilation</h2>
+
+  <h3>Direct Validator Compilation</h3>
+  <p>This contract uses a direct compilation approach without intermediate untyped wrapper:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidator ||])</code></pre>
+
+  <p>The <code>mkValidator</code> function directly handles the <code>BuiltinData</code> parameters:</p>
+  <pre><code>{-# INLINABLE mkValidator #-}
+mkValidator :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidator rawDatum rawRedeemer rawCtx =
+    let dat = unsafeFromBuiltinData @CampaignDatum rawDatum
+        red = unsafeFromBuiltinData @EscrowAction rawRedeemer
+        ctx = unsafeFromBuiltinData @ScriptContext rawCtx
+    in ... -- validation logic</code></pre>
+
+  <h2 id="10-practical-usage">10. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the crowdfunding validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+
+    writeValidator "milestone-escrow.plutus" validator
+
+    let vh      = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32  = toBech32ScriptAddress network validator
+
+    putStrLn "--- Milestone Escrow Contract ---"
+    putStrLn $ "Validator Hash: " <> P.show vh
+    putStrLn $ "Plutus Script Address: " <> P.show onchain
+    putStrLn $ "Bech32 Script Address: " <> bech32
+    putStrLn "---------------------------------"</code></pre>
+
+  <h3>Integration with Crowdfunding Platforms</h3>
+  <pre><code>-- Example: Create Campaign
+createCampaign :: PubKeyHash -> Integer -> POSIXTime -> Tx
+createCampaign creator target deadline = ...
+
+-- Example: Make Pledge
+makePledge :: ValidatorHash -> Integer -> PubKeyHash -> Tx
+makePledge valHash amount backer = ...
+
+-- Example: Unlock Milestone
+unlockMilestone :: ValidatorHash -> PubKeyHash -> Tx
+unlockMilestone valHash creator = ...
+
+-- Example: Claim Refund
+claimRefund :: ValidatorHash -> Tx
+claimRefund valHash = ...</code></pre>
+
+  <h2 id="11-risk-management">11. ⚠️ Risk Management</h2>
+
+  <h3>Backer Protection Mechanisms</h3>
+  <ul>
+    <li><strong>Automatic Refunds</strong>: Guaranteed return if target not met</li>
+    <li><strong>Milestone Verification</strong>: Funds released only upon demonstrated progress</li>
+    <li><strong>Time Limits</strong>: Prevents indefinite fund locking</li>
+    <li><strong>Transparent Tracking</strong>: All pledges and releases on-chain</li>
+  </ul>
+
+  <h3>Creator Considerations</h3>
+  <ul>
+    <li><strong>Realistic Targets</strong>: Set achievable funding goals</li>
+    <li><strong>Clear Milestones</strong>: Define verifiable delivery criteria</li>
+    <li><strong>Communication</strong>: Regular updates to maintain backer trust</li>
+    <li><strong>Contingency Planning</strong>: Prepare for partial funding scenarios</li>
+  </ul>
+
+  <h3>Platform Risks</h3>
+  <ul>
+    <li><strong>Creator Default</strong>: Failure to deliver after funding</li>
+    <li><strong>Dispute Resolution</strong>: Handling milestone verification disagreements</li>
+    <li><strong>Market Conditions</strong>: Changing environment affecting project viability</li>
+    <li><strong>Technical Issues</strong>: Smart contract vulnerabilities or platform failures</li>
+  </ul>
+
+  <h2 id="12-glossary">12. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Campaign</strong></td><td>A funding initiative with specific goals and timeline</td></tr>
+    <tr><td><strong>Creator</strong></td><td>Project owner initiating the crowdfunding campaign</td></tr>
+    <tr><td><strong>Backer</strong></td><td>Individual or entity contributing funds to a campaign</td></tr>
+    <tr><td><strong>Pledge</strong></td><td>Financial commitment from a backer to a campaign</td></tr>
+    <tr><td><strong>Funding Target</strong></td><td>Minimum amount required for campaign success</td></tr>
+    <tr><td><strong>Milestone</strong></td><td>Specific, verifiable project development stage</td></tr>
+    <tr><td><strong>Escrow</strong></td><td>Funds held by third party until conditions met</td></tr>
+    <tr><td><strong>All-or-Nothing</strong></td><td>Funding model where target must be met or funds returned</td></tr>
+    <tr><td><strong>Soft Cap</strong></td><td>Minimum viable funding amount (this contract's target)</td></tr>
+    <tr><td><strong>Hard Cap</strong></td><td>Maximum funding amount accepted</td></tr>
+    <tr><td><strong>Refund</strong></td><td>Return of pledged funds when campaign fails</td></tr>
+    <tr><td><strong>Vesting</strong></td><td>Gradual release of funds based on milestone completion</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For enterprise crowdfunding platforms, consider adding:
+    <ul>
+      <li>Multi-currency support for international backers</li>
+      <li>Advanced milestone verification mechanisms</li>
+      <li>Dispute resolution and arbitration systems</li>
+      <li>Backer voting for milestone approval</li>
+      <li>Creator reputation and rating systems</li>
+      <li>Insurance options for high-value campaigns</li>
+      <li>Integration with legal frameworks and compliance</li>
+      <li>Mobile and social media integration for campaign promotion</li>
+    </ul>
+  </div>
+
+</body>
+</html>

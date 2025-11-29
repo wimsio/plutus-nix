@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Revolving Credit Line Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .function {
+      background: #f0f7ff;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .action {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .math-formula {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: "Cambria Math", serif;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>💳 Revolving Credit Line Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Revolving Credit Line smart contract, which implements a flexible lending facility similar to traditional credit cards or lines of credit. Users can repeatedly borrow and repay funds up to a predefined credit limit, with automatic interest accrual over time.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#4-redeemer-actions">🎯 Redeemer Actions</a></li>
+    <li><a href="#5-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#6-interest-calculation">📈 Interest Calculation</a></li>
+    <li><a href="#7-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#8-credit-line-workflow">🔄 Credit Line Workflow</a></li>
+    <li><a href="#9-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#10-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#11-risk-management">⚠️ Risk Management</a></li>
+    <li><a href="#12-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Revolving Credit Line smart contract implements a flexible borrowing facility where:</p>
+
+  <ul>
+    <li><strong>Borrowers</strong> get pre-approved credit limits</li>
+    <li><strong>Funds can be drawn</strong> repeatedly up to the credit limit</li>
+    <li><strong>Interest accrues</strong> automatically on outstanding balances</li>
+    <li><strong>Repayments</strong> free up available credit for future borrowing</li>
+    <li><strong>Credit limits</strong> can be adjusted by authorized controllers</li>
+  </ul>
+
+  <div class="note">
+    <strong>Financial Concept:</strong> This implements a revolving credit facility similar to credit cards, where users have ongoing access to funds up to their credit limit and only pay interest on the amount actually borrowed.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>POSIXTime</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>, <code>scriptContextTxInfo</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>LineDatum</code></h3>
+  <p>Stores the state of each credit line:</p>
+  <ul>
+    <li><strong>ldBorrower</strong>: Public key hash of the credit line owner</li>
+    <li><strong>ldLimit</strong>: Maximum credit limit (total available to borrow)</li>
+    <li><strong>ldDrawn</strong>: Current outstanding balance (amount borrowed)</li>
+    <li><strong>ldRateModel</strong>: Parameters for interest rate calculations</li>
+    <li><strong>ldLastAccrual</strong>: Timestamp of last interest accrual</li>
+  </ul>
+
+  <pre><code>data LineDatum = LineDatum
+    { ldBorrower    :: PubKeyHash
+    , ldLimit       :: Integer        -- max draw
+    , ldDrawn       :: Integer        -- currently drawn
+    , ldRateModel   :: BuiltinByteString -- params for interest rate model
+    , ldLastAccrual :: POSIXTime
+    }</code></pre>
+
+  <h3>Available Credit Calculation</h3>
+  <div class="math-formula">
+    Available Credit = Credit Limit - Outstanding Balance
+  </div>
+
+  <h2 id="4-redeemer-actions">4. 🎯 Redeemer Actions</h2>
+
+  <h3><code>LineAction</code></h3>
+  <p>Defines the four possible operations on a credit line:</p>
+
+  <div class="action">
+    <strong>Draw amount</strong><br>
+    Borrow additional funds from the credit line. Must not exceed available credit limit.
+  </div>
+
+  <div class="action">
+    <strong>Repay amount</strong><br>
+    Make a payment toward the outstanding balance. Cannot repay more than currently owed.
+  </div>
+
+  <div class="info">
+    <strong>AdjustLimit newLimit</strong><br>
+    Modify the credit limit (requires controller authorization). New limit must cover existing balance.
+  </div>
+
+  <div class="info">
+    <strong>Accrue</strong><br>
+    Apply accrued interest to the outstanding balance. Can be called by anyone to update interest.
+  </div>
+
+  <h2 id="5-helper-functions">5. 🔧 Helper Functions</h2>
+
+  <h3><code>signedBy</code></h3>
+  <pre><code>{-# INLINABLE signedBy #-}
+signedBy :: PubKeyHash -> ScriptContext -> Bool
+signedBy pkh ctx = txSignedBy (scriptContextTxInfo ctx) pkh</code></pre>
+  <p>Convenience function to check if a transaction was signed by a specific public key.</p>
+
+  <h3><code>elapsed</code></h3>
+  <pre><code>{-# INLINABLE elapsed #-}
+elapsed :: POSIXTime -> POSIXTime -> Integer
+elapsed last now = getPOSIXTime now - getPOSIXTime last</code></pre>
+  <p>Calculates the time elapsed between two POSIX timestamps.</p>
+
+  <h2 id="6-interest-calculation">6. 📈 Interest Calculation</h2>
+
+  <h3><code>accrueInterest</code></h3>
+  <pre><code>{-# INLINABLE accrueInterest #-}
+accrueInterest :: LineDatum -> POSIXTime -> LineDatum
+accrueInterest ld now =
+    let delta = elapsed (ldLastAccrual ld) now
+        rate  = 5 -- 5% per unit time for simplicity
+        interest = divide (ldDrawn ld * rate * delta) 100
+    in ld { ldDrawn = ldDrawn ld + interest, ldLastAccrual = now }</code></pre>
+
+  <h3>Interest Formula</h3>
+  <div class="math-formula">
+    Interest = (Outstanding Balance × Interest Rate × Time Elapsed) ÷ 100
+  </div>
+
+  <h3>Example Interest Calculation</h3>
+  <pre><code>LineDatum:
+  ldDrawn = 1000 (outstanding balance)
+  ldLastAccrual = 1000 (previous timestamp)
+  Current time = 1100 (current timestamp)
+  Interest rate = 5% per time unit
+
+Calculation:
+  Time elapsed = 1100 - 1000 = 100 units
+  Interest = (1000 × 5 × 100) ÷ 100 = 5000
+  New balance = 1000 + 5000 = 6000</code></pre>
+
+  <div class="warning">
+    <strong>Note:</strong> The current implementation uses a simplified fixed interest rate. In production, consider implementing a more sophisticated rate model using the <code>ldRateModel</code> parameter for variable rates based on utilization, time, or market conditions.
+  </div>
+
+  <h2 id="7-core-validator-logic">7. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkValidator</code></h3>
+  <p>The main validation function that enforces credit line operations:</p>
+
+  <h4>Draw Validation</h4>
+  <ul>
+    <li>✅ Must be signed by the borrower</li>
+    <li>✅ New drawn amount must not exceed credit limit</li>
+    <li>❌ Fails if draw would exceed available credit</li>
+    <li>❌ Fails if borrower signature missing</li>
+  </ul>
+
+  <h4>Repay Validation</h4>
+  <ul>
+    <li>✅ Must be signed by the borrower</li>
+    <li>✅ Repayment amount cannot exceed current drawn amount</li>
+    <li>❌ Fails if repayment exceeds outstanding balance</li>
+    <li>❌ Fails if borrower signature missing</li>
+  </ul>
+
+  <h4>AdjustLimit Validation</h4>
+  <ul>
+    <li>✅ Must be signed by controller (currently same as borrower)</li>
+    <li>✅ New limit must be at least current drawn amount</li>
+    <li>❌ Fails if new limit would strand existing debt</li>
+    <li>❌ Fails if controller signature missing</li>
+  </ul>
+
+  <h4>Accrue Validation</h4>
+  <ul>
+    <li>✅ Always succeeds - can be called by anyone</li>
+    <li>✅ Updates interest automatically</li>
+    <li>✅ No signature requirements</li>
+  </ul>
+
+  <div class="note">
+    <strong>Design Note:</strong> The <code>Accrue</code> action can be called by anyone, creating an incentive for third parties to keep interest calculations current, similar to "keeper" networks in DeFi.
+  </div>
+
+  <h2 id="8-credit-line-workflow">8. 🔄 Credit Line Workflow</h2>
+
+  <div class="workflow">
+    <h3>Credit Line Lifecycle</h3>
+    
+    <h4>1. Initial Setup</h4>
+    <pre><code>LineDatum {
+  ldBorrower = "user_pkh",
+  ldLimit = 10000,     -- 10,000 unit credit limit
+  ldDrawn = 0,         -- No initial balance
+  ldRateModel = "simple_5pct",
+  ldLastAccrual = 1000 -- Initial timestamp
+}</code></pre>
+
+    <h4>2. First Draw</h4>
+    <pre><code>Action: Draw 3000
+Validation: 0 + 3000 ≤ 10000 ✅
+New State: ldDrawn = 3000, Available = 7000</code></pre>
+
+    <h4>3. Second Draw</h4>
+    <pre><code>Action: Draw 4000  
+Validation: 3000 + 4000 ≤ 10000 ✅
+New State: ldDrawn = 7000, Available = 3000</code></pre>
+
+    <h4>4. Interest Accrual</h4>
+    <pre><code>Action: Accrue (after 100 time units)
+Calculation: Interest = (7000 × 5 × 100) ÷ 100 = 35000
+New State: ldDrawn = 77000, Available = 23000</code></pre>
+
+    <h4>5. Partial Repayment</h4>
+    <pre><code>Action: Repay 20000
+Validation: 20000 ≤ 77000 ✅
+New State: ldDrawn = 57000, Available = 43000</code></pre>
+
+    <h4>6. Limit Increase</h4>
+    <pre><code>Action: AdjustLimit 15000
+Validation: 15000 ≥ 57000 ❌ FAILS - cannot reduce below current balance</code></pre>
+  </div>
+
+  <h2 id="9-script-compilation">9. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkValidatorUntyped #-}
+mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidatorUntyped d r c =
+    let ld  = unsafeFromBuiltinData @LineDatum d
+        act = unsafeFromBuiltinData @LineAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkValidator ld act ctx then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])</code></pre>
+
+  <h2 id="10-practical-usage">10. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the credit line validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+    
+    -- Save validator to file
+    writeValidator "revolving-credit-line.plutus" validator
+    
+    -- Generate addresses and hashes
+    let vh      = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32  = toBech32ScriptAddress network validator
+    
+    -- Output deployment information
+    putStrLn "\n--- Revolving Credit Line Validator Info ---"
+    putStrLn $ "Validator Hash (Plutus): " <> P.show vh
+    putStrLn $ "Plutus Script Address:    " <> P.show onchain
+    putStrLn $ "Bech32 Script Address:    " <> bech32
+    putStrLn "---------------------------------"</code></pre>
+
+  <h3>Integration with Off-Chain Code</h3>
+  <pre><code>-- Example: Create a new credit line
+createCreditLine :: PubKeyHash -> Integer -> POSIXTime -> Tx
+createCreditLine borrower limit timestamp = ...
+
+-- Example: Draw funds
+drawFunds :: ValidatorHash -> Integer -> Tx
+drawFunds valHash amount = ...
+
+-- Example: Accrue interest (can be called by anyone)
+accrueInterestTx :: ValidatorHash -> Tx
+accrueInterestTx valHash = ...</code></pre>
+
+  <h2 id="11-risk-management">11. ⚠️ Risk Management</h2>
+
+  <h3>Credit Risk</h3>
+  <ul>
+    <li><strong>Default Risk</strong>: Borrowers may not repay outstanding balances</li>
+    <li><strong>Concentration Risk</strong>: Over-exposure to single borrowers</li>
+    <li><strong>Interest Rate Risk</strong>: Changing market conditions affecting profitability</li>
+  </ul>
+
+  <h3>Technical Risks</h3>
+  <ul>
+    <li><strong>Interest Calculation Timing</strong>: Dependence on regular accrual calls</li>
+    <li><strong>Oracle Risk</strong>: If rates are based on external data</li>
+    <li><strong>Front-running</strong>: Manipulation of interest accrual timing</li>
+  </ul>
+
+  <h3>Risk Mitigation Strategies</h3>
+  <ul>
+    <li>Implement credit scoring and risk-based limits</li>
+    <li>Add collateral requirements for larger credit lines</li>
+    <li>Create automatic interest accrual mechanisms</li>
+    <li>Implement utilization-based interest rates</li>
+    <li>Add late payment penalties and fees</li>
+  </ul>
+
+  <h2 id="12-glossary">12. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Revolving Credit</strong></td><td>A credit facility that allows repeated borrowing and repayment up to a set limit</td></tr>
+    <tr><td><strong>Credit Limit</strong></td><td>Maximum amount that can be borrowed at any time</td></tr>
+    <tr><td><strong>Outstanding Balance</strong></td><td>Current amount borrowed and owed</td></tr>
+    <tr><td><strong>Available Credit</strong></td><td>Remaining borrowing capacity (Limit - Outstanding)</td></tr>
+    <tr><td><strong>Interest Accrual</strong></td><td>Process of calculating and adding interest to the balance</td></tr>
+    <tr><td><strong>Rate Model</strong></td><td>Algorithm determining how interest rates are calculated</td></tr>
+    <tr><td><strong>Draw</strong></td><td>Action of borrowing funds from the credit line</td></tr>
+    <tr><td><strong>Repay</strong></td><td>Action of returning funds to reduce outstanding balance</td></tr>
+    <tr><td><strong>Credit Line Controller</strong></td><td>Entity authorized to adjust credit limits</td></tr>
+    <tr><td><strong>Utilization Rate</strong></td><td>Percentage of credit limit currently being used</td></tr>
+    <tr><td><strong>Keeper</strong></td><td>Third party that calls Accrue to update interest calculations</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For real-world deployment, consider adding:
+    <ul>
+      <li>Sophisticated interest rate models (variable rates, compounding)</li>
+      <li>Credit scoring and risk-based pricing</li>
+      <li>Collateral requirements for credit lines</li>
+      <li>Automatic interest accrual triggers</li>
+      <li>Multi-signature controls for limit adjustments</li>
+      <li>Credit line expiration and renewal mechanisms</li>
+      <li>Integration with identity and credit verification systems</li>
+    </ul>
+  </div>
+
+</body>
+</html>
