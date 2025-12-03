@@ -21,19 +21,20 @@ import PlutusTx
 import PlutusTx.Prelude hiding (Semigroup(..), unless)
 import qualified PlutusTx.Builtins as Builtins
 
-
 -- Serialization
 import qualified Codec.Serialise as Serialise
 import qualified Data.ByteString.Lazy  as LBS
 import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Base16 as B16
+import qualified Data.Text.Encoding as TE
 
--- Cardano API (for Bech32 address)
+-- Cardano API (for Bech32)
 import qualified Cardano.Api as C
 import qualified Cardano.Api.Shelley as CS
 
 ------------------------------------------------------------------------
--- Datum and Redeemer
+-- Datum + Redeemer
 ------------------------------------------------------------------------
 
 data EscrowDatum = EscrowDatum
@@ -50,7 +51,7 @@ data EscrowAction = PaySeller | RefundSeller
 PlutusTx.unstableMakeIsData ''EscrowAction
 
 ------------------------------------------------------------------------
--- Helpers
+-- Helper
 ------------------------------------------------------------------------
 
 {-# INLINABLE scriptInputContainsNFT #-}
@@ -75,11 +76,13 @@ mkValidator dat action ctx =
            traceIfFalse "buyer signature missing"   (txSignedBy info (edBuyer dat)) &&
            traceIfFalse "seller not paid"           sellerPaid &&
            traceIfFalse "buyer not receive NFT"     buyerGetsNFT
+
       RefundSeller ->
            traceIfFalse "script input missing NFT" (scriptInputContainsNFT ctx (edCurrency dat) (edToken dat)) &&
            traceIfFalse "seller signature missing" (txSignedBy info (edSeller dat)) &&
            traceIfFalse "too early for refund"     afterDeadline &&
            traceIfFalse "seller did not receive NFT" sellerGetsNFT
+
   where
     info :: TxInfo
     info = scriptContextTxInfo ctx
@@ -121,28 +124,25 @@ validator :: Validator
 validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])
 
 ------------------------------------------------------------------------
--- Validator Hash + Addresses
+-- On-chain hash + address
 ------------------------------------------------------------------------
 
--- On-chain (Plutus) hash and address
--- Compute validator hash using only plutus-ledger-api + plutus-tx
 plutusValidatorHash :: PlutusV2.Validator -> PlutusV2.ValidatorHash
-plutusValidatorHash validator =
-    let bytes    = Serialise.serialise validator
+plutusValidatorHash val =
+    let bytes    = Serialise.serialise val
         short    = SBS.toShort (LBS.toStrict bytes)
-        strictBS = SBS.fromShort short              -- convert ShortByteString → ByteString
-        builtin  = Builtins.toBuiltin strictBS      -- convert ByteString → BuiltinByteString
+        strictBS = SBS.fromShort short
+        builtin  = Builtins.toBuiltin strictBS
     in PlutusV2.ValidatorHash builtin
 
--- Derive the Plutus script address from the hash
 plutusScriptAddress :: Address
 plutusScriptAddress =
     Address (ScriptCredential (plutusValidatorHash validator)) Nothing
 
+------------------------------------------------------------------------
+-- Bech32 address (off-chain)
+------------------------------------------------------------------------
 
-
--- Off-chain (Cardano API) Bech32 address for CLI use
--- Off-chain (Cardano API) Bech32 address for CLI use
 toBech32ScriptAddress :: C.NetworkId -> Validator -> String
 toBech32ScriptAddress network val =
     let serialised = SBS.toShort . LBS.toStrict $ Serialise.serialise val
@@ -151,18 +151,33 @@ toBech32ScriptAddress network val =
 
         scriptHash = C.hashScript (C.PlutusScript C.PlutusScriptV2 plutusScript)
 
-        -- The type annotation declares it's a Babbage-era address
         shelleyAddr :: C.AddressInEra C.BabbageEra
         shelleyAddr =
             C.makeShelleyAddressInEra
                 network
                 (C.PaymentCredentialByScript scriptHash)
                 C.NoStakeAddress
+
     in T.unpack (C.serialiseAddress shelleyAddr)
 
+------------------------------------------------------------------------
+-- CBOR HEX Generator
+------------------------------------------------------------------------
+
+validatorToCborHex :: Validator -> String
+validatorToCborHex val =
+    let cbor = LBS.toStrict (Serialise.serialise val)
+        hex  = B16.encode cbor
+    in T.unpack (TE.decodeUtf8 hex)
+
+writeCBOR :: FilePath -> Validator -> IO ()
+writeCBOR fp val = do
+    let hex = validatorToCborHex val
+    BS.writeFile fp (TE.encodeUtf8 (T.pack hex))
+    putStrLn ("CBOR hex written to: " <> fp)
 
 ------------------------------------------------------------------------
--- File writing
+-- Write Raw Plutus
 ------------------------------------------------------------------------
 
 writeValidator :: FilePath -> Validator -> IO ()
@@ -178,12 +193,15 @@ main :: IO ()
 main = do
     let network = C.Testnet (C.NetworkMagic 1)
 
+    -- Write binary Plutus script
     writeValidator "validator.plutus" validator
+
+    -- Write CBOR hex
+    writeCBOR "validator.cbor" validator
 
     let vh      = plutusValidatorHash validator
         onchain = plutusScriptAddress
         bech32  = toBech32ScriptAddress network validator
-
 
     putStrLn "\n--- Escrow NFT Validator Info ---"
     putStrLn $ "Validator Hash (Plutus): " <> P.show vh

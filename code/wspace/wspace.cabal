@@ -60,6 +60,7 @@ library
       ParameterizedVesting
       Vesting
       SimpleValidator
+      MoranNFT
     build-depends:
       base >=4.14 && <5,      
       time,
@@ -170,6 +171,23 @@ executable synthetic-assets-exe
 
 executable limit-order-exe
     main-is:            Limit-Order.hs
+    hs-source-dirs:     tests
+    build-depends:
+        base >=4.14 && <5,
+        plutus-ledger-api,
+        plutus-tx,
+        plutus-tx-plugin,
+        bytestring,
+        serialise,
+        text,
+        containers,
+        cardano-api,
+        cardano-ledger-core,
+        cardano-ledger-shelley
+    default-language:   Haskell2010
+
+executable file-exe
+    main-is:            File.hs
     hs-source-dirs:     tests
     build-depends:
         base >=4.14 && <5,
