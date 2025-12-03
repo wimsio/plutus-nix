@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pooled Lending Protocol Smart Contract Tutorial</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #fdfdfd;
+      padding: 20px;
+      line-height: 1.7;
+      color: #222;
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border-left: 4px solid #0077cc;
+    }
+    code {
+      background: #eee;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: "Consolas", monospace;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #002b45;
+      color: white;
+      padding: 12px;
+    }
+    td {
+      padding: 10px;
+      vertical-align: top;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    ul, ol {
+      padding-left: 1.5em;
+    }
+    .note {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #0077cc;
+      margin: 15px 0;
+    }
+    .warning {
+      background: #fff3e0;
+      padding: 15px;
+      border-radius: 6px;
+      border-left: 4px solid #ff9800;
+      margin: 15px 0;
+    }
+    .success {
+      background: #f0fff0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .danger {
+      background: #ffeaea;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    .info {
+      background: #e8f5e9;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      border-left: 4px solid #4caf50;
+    }
+    .math-formula {
+      background: #f8f8f8;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: "Cambria Math", serif;
+      text-align: center;
+      margin: 15px 0;
+    }
+    .workflow {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .state-machine {
+      background: #fff;
+      border: 2px solid #002b45;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .state {
+      background: #002b45;
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .pool-stats {
+      background: #e8f5e9;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .interest-calculation {
+      background: #f0f7ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+      border-left: 4px solid #2196f3;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🏊 Pooled Lending Protocol Smart Contract Tutorial</h1>
+
+  <p>This tutorial covers the Pooled Lending Protocol smart contract, which implements a sophisticated money market protocol similar to Compound or Aave. The contract enables users to deposit assets to earn interest while providing liquidity for borrowers, with dynamic interest rates based on pool utilization and automated reserve accumulation.</p>
+
+  <hr>
+
+  <h2>📚 Table of Contents</h2>
+  <ol>
+    <li><a href="#1-overview">🏢 Overview</a></li>
+    <li><a href="#2-imports-overview">📦 Imports Overview</a></li>
+    <li><a href="#3-data-structures">🗃️ Data Structures</a></li>
+    <li><a href="#5-pool-actions">⚡ Pool Actions</a></li>
+    <li><a href="#6-helper-functions">🔧 Helper Functions</a></li>
+    <li><a href="#7-interest-mechanics">📈 Interest & Reserve Mechanics</a></li>
+    <li><a href="#8-core-validator-logic">🧠 Core Validator Logic</a></li>
+    <li><a href="#9-pool-dynamics">🔄 Pool Dynamics</a></li>
+    <li><a href="#10-risk-management">⚠️ Risk Management</a></li>
+    <li><a href="#11-script-compilation">⚙️ Script Compilation</a></li>
+    <li><a href="#12-practical-usage">🧪 Practical Usage</a></li>
+    <li><a href="#13-glossary">📘 Glossary</a></li>
+  </ol>
+
+  <hr>
+
+  <h2 id="1-overview">1. 🏢 Overview</h2>
+
+  <p>The Pooled Lending Protocol smart contract implements a comprehensive money market system that:</p>
+
+  <ul>
+    <li><strong>Aggregates liquidity</strong> from multiple depositors into shared pools</li>
+    <li><strong>Enables over-collateralized borrowing</strong> against deposited assets</li>
+    <li><strong>Implements dynamic interest rates</strong> based on pool utilization</li>
+    <li><strong>Automatically accrues interest</strong> and accumulates reserves</li>
+    <li><strong>Maintains utilization limits</strong> to ensure liquidity and solvency</li>
+  </ul>
+
+  <div class="note">
+    <strong>DeFi Money Market:</strong> This contract implements the core mechanics of decentralized lending protocols where interest rates are algorithmically determined by supply and demand dynamics within each liquidity pool.
+  </div>
+
+  <h2 id="2-imports-overview">2. 📦 Imports Overview</h2>
+
+  <h3>Core Plutus Modules</h3>
+  <ul>
+    <li><strong>Plutus.V2.Ledger.Api</strong>: Core types (<code>PubKeyHash</code>, <code>POSIXTime</code>, <code>ScriptContext</code>)</li>
+    <li><strong>Plutus.V2.Ledger.Contexts</strong>: Transaction context utilities (<code>txSignedBy</code>)</li>
+    <li><strong>Plutus.V1.Ledger.Interval</strong>: Time interval operations</li>
+    <li><strong>Plutus.V1.Ledger.Value</strong>: Token value operations (<code>valueOf</code>, <code>adaSymbol</code>, <code>adaToken</code>)</li>
+  </ul>
+
+  <h3>Serialization & Cardano API</h3>
+  <ul>
+    <li><strong>PlutusTx</strong>: Script compilation and template haskell</li>
+    <li><strong>Codec.Serialise</strong>: Binary serialization for on-chain scripts</li>
+    <li><strong>Cardano.Api</strong>: Address generation and network configuration</li>
+  </ul>
+
+  <h2 id="3-data-structures">3. 🗃️ Data Structures</h2>
+
+  <h3><code>PoolDatum</code></h3>
+  <p>Stores the complete state of a liquidity pool:</p>
+  <ul>
+    <li><strong>pdCash</strong>: Available liquidity in the pool (can be borrowed)</li>
+    <li><strong>pdBorrows</strong>: Total outstanding borrows from the pool</li>
+    <li><strong>pdReserveFactor</strong>: Percentage of interest allocated to reserves (e.g., 10 = 10%)</li>
+    <li><strong>pdRateModel</strong>: Parameters for dynamic interest rate calculations</li>
+  </ul>
+
+  <pre><code>data PoolDatum = PoolDatum
+    { pdCash         :: Integer       -- total ADA in pool
+    , pdBorrows      :: Integer       -- total borrows
+    , pdReserveFactor :: Integer      -- e.g., 10 = 10%
+    , pdRateModel    :: BuiltinByteString -- parameters for interest rate curve
+    }</code></pre>
+
+  <h3>Pool State Parameters</h3>
+  <table>
+    <tr><th>Parameter</th><th>Purpose</th><th>Typical Value</th></tr>
+    <tr><td>pdCash</td><td>Available liquidity</td><td>1,000,000 ADA</td></tr>
+    <tr><td>pdBorrows</td><td>Outstanding loans</td><td>600,000 ADA</td></tr>
+    <tr><td>pdReserveFactor</td><td>Protocol reserve percentage</td><td>10%</td></tr>
+    <tr><td>pdRateModel</td><td>Interest rate algorithm</td><td>Kinked rate model</td></tr>
+  </table>
+
+  <h2 id="5-pool-actions">5. ⚡ Pool Actions</h2>
+
+  <h3><code>PoolAction</code></h3>
+  <p>Defines the five core operations for pool management:</p>
+
+  <div class="success">
+    <strong>Deposit amount</strong><br>
+    Add liquidity to the pool. Earn interest on supplied assets and increase available borrowing capacity.
+  </div>
+
+  <div class="info">
+    <strong>Withdraw amount</strong><br>
+    Remove liquidity from the pool. Must not exceed available cash in the pool.
+  </div>
+
+  <div class="danger">
+    <strong>Borrow amount</strong><br>
+    Take out a loan from the pool. Subject to utilization limits and interest accrual.
+  </div>
+
+  <div class="info">
+    <strong>Repay amount</strong><br>
+    Return borrowed funds to the pool. Reduces outstanding debt and interest obligations.
+  </div>
+
+  <div class="success">
+    <strong>Accrue</strong><br>
+    Update interest calculations and reserve allocations. Can be called by anyone to keep rates current.
+  </div>
+
+  <h2 id="6-helper-functions">6. 🔧 Helper Functions</h2>
+
+  <h3><code>after</code></h3>
+  <pre><code>{-# INLINABLE after #-}
+after :: POSIXTime -> ScriptContext -> Bool
+after t ctx = Interval.contains (Interval.from t) (txInfoValidRange $ scriptContextTxInfo ctx)</code></pre>
+  <p>Checks if transaction occurs after specified timestamp.</p>
+
+  <h3><code>signedBy</code></h3>
+  <pre><code>{-# INLINABLE signedBy #-}
+signedBy :: PubKeyHash -> ScriptContext -> Bool
+signedBy pkh ctx = txSignedBy (scriptContextTxInfo ctx) pkh</code></pre>
+  <p>Validates transaction signature by specific public key hash.</p>
+
+  <h2 id="7-interest-mechanics">7. 📈 Interest & Reserve Mechanics</h2>
+
+  <h3><code>utilization</code></h3>
+  <pre><code>{-# INLINABLE utilization #-}
+utilization :: PoolDatum -> Integer
+utilization pd = if pdCash pd + pdBorrows pd == 0 then 0 else divide (pdBorrows pd * 100) (pdCash pd + pdBorrows pd)</code></pre>
+
+  <h3>Utilization Rate Formula</h3>
+  <div class="math-formula">
+    Utilization Rate = (Total Borrows × 100) ÷ (Available Cash + Total Borrows)
+  </div>
+
+  <h3><code>accrueInterest</code></h3>
+  <pre><code>{-# INLINABLE accrueInterest #-}
+accrueInterest :: PoolDatum -> PoolDatum
+accrueInterest pd =
+    let rate = 5 -- 5% per epoch for simplicity
+        interest = divide (pdBorrows pd * rate) 100
+        reserve = divide (interest * pdReserveFactor pd) 100
+    in pd { pdBorrows = pdBorrows pd + interest - reserve
+          , pdCash = pdCash pd + reserve
+          }</code></pre>
+
+  <div class="interest-calculation">
+    <h3>Interest Accrual Example</h3>
+    <pre><code>Initial State:
+  pdCash = 400,000 ADA
+  pdBorrows = 600,000 ADA
+  pdReserveFactor = 10
+  Interest Rate = 5% per epoch
+
+Calculation:
+  Interest = (600,000 × 5) ÷ 100 = 30,000 ADA
+  Reserve = (30,000 × 10) ÷ 100 = 3,000 ADA
+  Borrower Interest = 30,000 - 3,000 = 27,000 ADA
+
+Final State:
+  pdCash = 400,000 + 3,000 = 403,000 ADA
+  pdBorrows = 600,000 + 27,000 = 627,000 ADA</code></pre>
+  </div>
+
+  <h3>Dynamic Interest Rates</h3>
+  <table>
+    <tr><th>Utilization Range</th><th>Interest Rate Impact</th><th>Borrower Impact</th><th>Depositor Impact</th></tr>
+    <tr><td>0-50%</td><td>Low rates</td><td>Cheap borrowing</td><td>Lower yields</td></tr>
+    <tr><td>50-80%</td><td>Moderate rates</td><td>Reasonable costs</td><td>Good yields</td></tr>
+    <tr><td>80-100%</td><td>High rates</td><td>Expensive borrowing</td><td>High yields</td></tr>
+  </table>
+
+  <h2 id="8-core-validator-logic">8. 🧠 Core Validator Logic</h2>
+
+  <h3><code>mkValidator</code></h3>
+  <p>The main validation function that enforces pool safety rules:</p>
+
+  <h4>Deposit Validation</h4>
+  <ul>
+    <li>✅ Deposit amount must be positive</li>
+    <li>❌ Fails if zero or negative amount</li>
+  </ul>
+
+  <h4>Withdraw Validation</h4>
+  <ul>
+    <li>✅ Withdrawal amount cannot exceed available cash</li>
+    <li>❌ Fails if insufficient liquidity in pool</li>
+  </ul>
+
+  <h4>Borrow Validation</h4>
+  <ul>
+    <li>✅ New borrows cannot exceed 80% utilization limit</li>
+    <li>❌ Fails if borrowing would make pool over-utilized</li>
+  </ul>
+
+  <h4>Repay Validation</h4>
+  <ul>
+    <li>✅ Repayment cannot exceed outstanding borrows</li>
+    <li>❌ Fails if repaying more than owed</li>
+  </ul>
+
+  <h4>Accrue Validation</h4>
+  <ul>
+    <li>✅ Always succeeds - can be called by anyone</li>
+    <li>✅ Updates interest and reserves automatically</li>
+  </ul>
+
+  <div class="warning">
+    <strong>Utilization Limit:</strong> The 80% maximum utilization ensures there's always liquidity available for withdrawals and prevents bank run scenarios.
+  </div>
+
+  <h2 id="9-pool-dynamics">9. 🔄 Pool Dynamics</h2>
+
+  <div class="workflow">
+    <h3>Complete Pool Lifecycle</h3>
+
+    <div class="state-machine">
+      <div class="state">🏊 Pool Initialization</div>
+      
+      <div class="pool-stats">
+        <h4>Initial Pool State</h4>
+        <pre><code>PoolDatum {
+  pdCash = 0,
+  pdBorrows = 0,
+  pdReserveFactor = 10,  -- 10% to reserves
+  pdRateModel = "kinked_model"
+}</code></pre>
+      </div>
+
+      <h4>1. First Deposits</h4>
+      <pre><code>Action: Deposit 200000 (200,000 ADA)
+Validation: Amount > 0 ✅
+New State: pdCash = 200000, Utilization = 0%</code></pre>
+
+      <h4>2. Additional Deposits</h4>
+      <pre><code>Deposit 300000 → pdCash = 500000
+Deposit 500000 → pdCash = 1,000,000
+Total Supply: 1,000,000 ADA</code></pre>
+
+      <h4>3. First Borrowing</h4>
+      <pre><code>Action: Borrow 400000 (400,000 ADA)
+Validation:
+  - New borrows (400K) ≤ 80% of total (1M × 80% = 800K) ✅
+New State: pdCash = 600000, pdBorrows = 400000
+Utilization: 400K ÷ (600K + 400K) = 40%</code></pre>
+
+      <h4>4. Additional Borrowing</h4>
+      <pre><code>Action: Borrow 200000 (200,000 ADA)
+Validation:
+  - New total borrows (600K) ≤ 80% of 1M ✅
+New State: pdCash = 400000, pdBorrows = 600000
+Utilization: 600K ÷ 1M = 60%</code></pre>
+
+      <h4>5. Interest Accrual</h4>
+      <pre><code>Action: Accrue
+Calculation (5% interest):
+  Interest = (600,000 × 5) ÷ 100 = 30,000
+  Reserve = (30,000 × 10) ÷ 100 = 3,000
+  Borrower share = 27,000
+New State: pdCash = 403,000, pdBorrows = 627,000</code></pre>
+
+      <h4>6. Maximum Borrowing Attempt</h4>
+      <pre><code>Action: Borrow 300000
+Validation:
+  - Current borrows: 627,000
+  - Available: 403,000
+  - New utilization: (627K + 300K) ÷ (403K + 627K + 300K) = 927K ÷ 1.33M = 69% ✅
+Result: Borrow successful</code></pre>
+
+      <h4>7. Withdrawal Scenario</h4>
+      <pre><code>Action: Withdraw 200000
+Validation:
+  - Available cash: 103,000 (after last borrow)
+  - Request: 200,000 ❌
+Result: Transaction rejected - insufficient liquidity</code></pre>
+
+      <h4>8. Partial Repayment</h4>
+      <pre><code>Action: Repay 100000
+Validation: 100,000 ≤ 927,000 ✅
+New State: pdCash = 203,000, pdBorrows = 827,000</code></pre>
+    </div>
+  </div>
+
+  <h3>Pool Health Indicators</h3>
+  <table>
+    <tr><th>Metric</th><th>Formula</th><th>Healthy Range</th><th>Risk Level</th></tr>
+    <tr><td>Utilization Rate</td><td>Borrows ÷ Total Supply</td><td>40-70%</td><td>Optimal</td></tr>
+    <tr><td>Available Liquidity</td><td>Cash ÷ Total Supply</td><td>30-60%</td><td>Safe</td></tr>
+    <tr><td>Reserve Ratio</td><td>Reserves ÷ Total Interest</td><td>5-15%</td><td>Standard</td></tr>
+  </table>
+
+  <h2 id="10-risk-management">10. ⚠️ Risk Management</h2>
+
+  <h3>Protocol Risks</h3>
+  <ul>
+    <li><strong>Liquidity Risk</strong>: Insufficient cash for withdrawals</li>
+    <li><strong>Interest Rate Risk</strong>: Mismatch between borrowing and lending rates</li>
+    <li><strong>Smart Contract Risk</strong>: Vulnerabilities in protocol code</li>
+    <li><strong>Oracle Risk</strong>: Price feed manipulation for collateral</li>
+  </ul>
+
+  <h3>User Risks</h3>
+  <ul>
+    <li><strong>Impermanent Loss</strong>: Opportunity cost vs. holding assets</li>
+    <li><strong>Liquidation Risk</strong>: Forced closure of borrowing positions</li>
+    <li><strong>Interest Rate Volatility</strong>: Changing borrowing costs</li>
+    <li><strong>Platform Risk</strong>: Protocol failure or shutdown</li>
+  </ul>
+
+  <h3>Risk Mitigation Strategies</h3>
+  <ul>
+    <li>Utilization caps to ensure liquidity</li>
+    <li>Reserve funds for protocol insurance</li>
+    <li>Gradual interest rate adjustments</li>
+    <li>Multi-oracle price feeds</li>
+    <li>Time-locked upgrades and governance</li>
+  </ul>
+
+  <h2 id="11-script-compilation">11. ⚙️ Script Compilation</h2>
+
+  <h3><code>mkValidatorUntyped</code></h3>
+  <p>Wraps the typed validator for Plutus compatibility:</p>
+  <pre><code>{-# INLINABLE mkValidatorUntyped #-}
+mkValidatorUntyped :: BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkValidatorUntyped d r c =
+    let pd = unsafeFromBuiltinData @PoolDatum d
+        act = unsafeFromBuiltinData @PoolAction r
+        ctx = unsafeFromBuiltinData @ScriptContext c
+    in if mkValidator pd act ctx then () else error ()</code></pre>
+
+  <h3><code>validator</code></h3>
+  <p>Compiles the validator into executable Plutus Core script:</p>
+  <pre><code>validator :: Validator
+validator = mkValidatorScript $$(PlutusTx.compile [|| mkValidatorUntyped ||])</code></pre>
+
+  <h2 id="12-practical-usage">12. 🧪 Practical Usage</h2>
+
+  <h3>Deployment Steps</h3>
+  <pre><code>-- Compile and deploy the pool validator
+main :: IO ()
+main = do
+    let network = C.Testnet (C.NetworkMagic 1)
+    writeValidator "pool-lending.plutus" validator
+
+    let vh      = plutusValidatorHash validator
+        onchain = plutusScriptAddress
+        bech32  = toBech32ScriptAddress network validator
+
+    putStrLn "\n--- Pooled Lending Validator Info ---"
+    putStrLn $ "Validator Hash (Plutus): " <> P.show vh
+    putStrLn $ "Plutus Script Address:    " <> P.show onchain
+    putStrLn $ "Bech32 Script Address:    " <> bech32
+    putStrLn "---------------------------------"</code></pre>
+
+  <h3>Integration with DeFi Platforms</h3>
+  <pre><code>-- Example: Supply Liquidity
+supplyLiquidity :: ValidatorHash -> Integer -> Tx
+supplyLiquidity valHash amount = ...
+
+-- Example: Borrow Funds
+borrowFunds :: ValidatorHash -> Integer -> Tx
+borrowFunds valHash amount = ...
+
+-- Example: Accrue Interest
+accrueInterest :: ValidatorHash -> Tx
+accrueInterest valHash = ...
+
+-- Example: Withdraw Earnings
+withdrawLiquidity :: ValidatorHash -> Integer -> Tx
+withdrawLiquidity valHash amount = ...</code></pre>
+
+  <h2 id="13-glossary">13. 📘 Glossary</h2>
+
+  <table>
+    <tr><th>Term</th><th>Definition</th></tr>
+    <tr><td><strong>Liquidity Pool</strong></td><td>Smart contract holding aggregated funds from multiple users</td></tr>
+    <tr><td><strong>Utilization Rate</strong></td><td>Percentage of pool funds currently borrowed</td></tr>
+    <tr><td><strong>Reserve Factor</strong></td><td>Percentage of interest allocated to protocol reserves</td></tr>
+    <tr><td><strong>Interest Accrual</strong></td><td>Process of calculating and adding interest to borrows</td></tr>
+    <tr><td><strong>Rate Model</strong></td><td>Algorithm determining interest rates based on utilization</td></tr>
+    <tr><td><strong>Suppliers</strong></td><td>Users who deposit funds to earn interest</td></tr>
+    <tr><td><strong>Borrowers</strong></td><td>Users who take loans from the pool</td></tr>
+    <tr><td><strong>Cash</strong></td><td>Available funds in pool that can be borrowed or withdrawn</td></tr>
+    <tr><td><strong>Total Supply</strong></td><td>Sum of cash and borrows in the pool</td></tr>
+    <tr><td><strong>Keeper</strong></td><td>Entity that calls Accrue to update interest calculations</td></tr>
+    <tr><td><strong>Money Market</strong></td><td>Financial market for short-term borrowing and lending</td></tr>
+    <tr><td><strong>APY (Annual Percentage Yield)</strong></td><td>Total return including compound interest</td></tr>
+  </table>
+
+  <div class="note">
+    <strong>Production Enhancements:</strong> For enterprise DeFi deployment, consider adding:
+    <ul>
+      <li>Multi-asset pool support with cross-collateralization</li>
+      <li>Advanced rate models with kinks and optimal utilization</li>
+      <li>Flash loan functionality for arbitrage opportunities</li>
+      <li>Governance mechanisms for parameter adjustments</li>
+      <li>Insurance funds and risk mitigation pools</li>
+      <li>Liquidation engines for under-collateralized positions</li>
+      <li>Integration with price oracles for asset valuation</li>
+      <li>Cross-protocol composability with other DeFi services</li>
+    </ul>
+  </div>
+
+</body>
+</html>

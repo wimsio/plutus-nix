@@ -1,0 +1,213 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🧩 Tutorial: Template.hs Deep Dive</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 2px;
+      line-height: 1.6;
+      background: #fff;
+      color: #222;
+    }
+    h1, h2, h3 {
+      color: #002b45;
+    }
+    pre {
+      background: #f0f0f0;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    code {
+      font-family: monospace;
+      background: #fdfdfd;
+      padding: 2px 4px;
+      border-radius: 4px;
+      color: #c7254e;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 12px;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    th {
+      background-color: #f0f8ff;
+      color: #002b45;
+    }
+    a {
+      color: #0077cc;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<h1>🧩 Tutorial: Understanding and Using <code>Template.hs</code></h1>
+<p>This tutorial walks you through the <code>Template.hs</code> parameterized validator contract. You’ll understand how to write, compile, and deploy it — along with best practices for using helper utilities and saving contracts in Bech32 format.</p>
+
+<h2>📑 Table of Contents</h2>
+<ol>
+  <li><a href="#1-language-extensions">⚙️ Language Extensions</a></li>
+  <li><a href="#2-imports">📦 Module Imports</a></li>
+  <li><a href="#3-data-type">🧱 <code>TemplateParams</code> Definition</a></li>
+  <li><a href="#4-validator-logic">🛡️ Core Validator Logic</a></li>
+  <li><a href="#5-wrapping-the-validator">🎁 Wrapping the Validator</a></li>
+  <li><a href="#6-compilation">💾 Compilation to <code>Validator</code></a></li>
+  <li><a href="#7-io-helpers">📂 File I/O and Address Helpers</a></li>
+  <li><a href="#8-example">🚀 Test Example for Quick Save</a></li>
+  <li><a href="#9-glossary">📘 Glossary</a></li>
+</ol>
+
+<h2 id="1-language-extensions">1. ⚙️ Language Extensions</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+</code></pre>
+<ul>
+  <li><strong>DataKinds</strong>: Enables promotion of data constructors to type-level values.</li>
+  <li><strong>MultiParamTypeClasses</strong>: Allows typeclasses with more than one parameter.</li>
+  <li><strong>NoImplicitPrelude</strong>: Opts out of default Prelude for Plutus-specific prelude.</li>
+  <li><strong>OverloadedStrings</strong>: Allows string literals to be polymorphic (e.g., used as <code>ByteString</code>).</li>
+  <li><strong>ScopedTypeVariables</strong>: Allows explicit type scoping in function bodies.</li>
+  <li><strong>TemplateHaskell</strong>: Enables compile-time metaprogramming (e.g., <code>compile</code>, <code>liftCode</code>).</li>
+  <li><strong>DeriveAnyClass</strong> &amp; <strong>DeriveGeneric</strong>: Used for generic derivations (useful in serialization).</li>
+</ul>
+
+<h2 id="2-imports">2. 📦 Module Imports</h2>
+
+<h3>🧭 Plutus Ledger & Contexts</h3>
+<pre><code>import Plutus.V1.Ledger.Interval (contains, from)
+import Plutus.V2.Ledger.Api (BuiltinData, POSIXTime, PubKeyHash(..), BuiltinByteString, ScriptContext(..), TxInfo(..), Validator, mkValidatorScript)
+import Plutus.V2.Ledger.Contexts (txSignedBy)
+</code></pre>
+<ul>
+  <li><strong>Interval</strong>: Used for time-based constraints.</li>
+  <li><strong>Validator</strong>: Represents the compiled Plutus script.</li>
+  <li><strong>txSignedBy</strong>: Verifies signatures from required parties.</li>
+</ul>
+
+<h3>🧪 Compilation and Utility</h3>
+<pre><code>import PlutusTx (applyCode, compile, liftCode, makeLift)
+import PlutusTx.Prelude (Bool(..), traceIfFalse, ($), (&&))
+</code></pre>
+<p>Used for defining and compiling parameterized on-chain functions in Plutus Core.</p>
+
+<h3>🛠️ Custom Utilities</h3>
+<pre><code>import Utilities (wrapValidator, writeValidatorToFile, validatorAddressBech32, Network)</code></pre>
+<ul>
+  <li><code>wrapValidator</code>: Wraps untyped validator for deployment.</li>
+  <li><code>writeValidatorToFile</code>: Serializes script to <code>.plutus</code>.</li>
+  <li><code>validatorAddressBech32</code>: Converts compiled script to a Bech32 address.</li>
+</ul>
+
+<h3>📁 Base I/O</h3>
+<pre><code>import Prelude (IO, String, FilePath, (.))</code></pre>
+
+<h2 id="3-data-type">3. 🧱 Defining <code>TemplateParams</code></h2>
+<pre><code>data TemplateParams = TemplateParams
+  { tpOwner :: PubKeyHash
+  , tpNote  :: BuiltinByteString
+  }
+makeLift ''TemplateParams
+</code></pre>
+<ul>
+  <li><code>tpOwner</code>: Authorized wallet (by public key hash).</li>
+  <li><code>tpNote</code>: An arbitrary note (metadata or label) as <code>ByteString</code>.</li>
+  <li><code>makeLift</code>: Allows this type to be used in Template Haskell compilation.</li>
+</ul>
+
+<h2 id="4-validator-logic">4. 🛡️ Core Validator Logic</h2>
+<pre><code>{-# INLINABLE mkTemplateValidator #-}
+mkTemplateValidator :: TemplateParams -> () -> () -> ScriptContext -> Bool
+mkTemplateValidator params _ _ ctx =
+    traceIfFalse "beneficiary's signature missing" signedByOwner
+  where
+    info = scriptContextTxInfo ctx
+    signedByOwner = txSignedBy info (tpOwner params)
+</code></pre>
+<ul>
+  <li>Ensures only the specified <code>tpOwner</code> can unlock or use the script.</li>
+  <li>Uses <code>traceIfFalse</code> for debugging error messages.</li>
+</ul>
+
+<h2 id="5-wrapping-the-validator">5. 🎁 Wrapping the Validator</h2>
+<pre><code>{-# INLINABLE mkWrappedTemplateValidator #-}
+mkWrappedTemplateValidator :: TemplateParams -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkWrappedTemplateValidator = wrapValidator . mkTemplateValidator
+</code></pre>
+<p>This wraps the typed validator into an untyped one suitable for Plutus script serialization.</p>
+
+<h2 id="6-compilation">6. 💾 Compilation to <code>Validator</code></h2>
+<pre><code>validator :: TemplateParams -> Validator
+validator params =
+  mkValidatorScript
+    ( $$(compile [|| mkWrappedTemplateValidator ||])
+      `applyCode` liftCode params )
+</code></pre>
+<ul>
+  <li><code>compile</code>: Converts Haskell into Plutus Core.</li>
+  <li><code>applyCode</code>: Applies parameters to create a concrete script.</li>
+  <li><code>liftCode</code>: Embeds runtime data into compiled code.</li>
+</ul>
+
+<h2 id="7-io-helpers">7. 📂 File I/O and Bech32 Helpers</h2>
+<pre><code>saveTemplate :: FilePath -> TemplateParams -> IO ()
+saveTemplate fp = writeValidatorToFile fp . validator
+</code></pre>
+<p>Writes the compiled validator with specified parameters to a file.</p>
+
+<pre><code>templateBech32 :: Network -> TemplateParams -> String
+templateBech32 net params = validatorAddressBech32 net (validator params)
+</code></pre>
+<p>Converts the compiled validator to a usable Cardano script address.</p>
+
+<h2 id="8-example">8. 🚀 Quick Example</h2>
+<pre><code>exampleParams :: TemplateParams
+exampleParams = TemplateParams
+  { tpOwner = PubKeyHash "00000000000000000000000000000000000000000000000000000000"
+  , tpNote  = "Example Param"
+  }
+
+saveTemplateExample :: IO ()
+saveTemplateExample = saveTemplate "./assets/template-param.plutus" exampleParams
+</code></pre>
+<p>You can run <code>saveTemplateExample</code> in <code>cabal repl</code> to quickly generate a <code>.plutus</code> file.</p>
+
+<h2 id="9-glossary">9. 📘 Glossary</h2>
+<table>
+  <thead>
+    <tr><th>🔹 Term</th><th>💬 Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>PubKeyHash</code></td><td>Hash of a wallet’s public key; used for authentication</td></tr>
+    <tr><td><code>Validator</code></td><td>Compiled smart contract that validates transactions</td></tr>
+    <tr><td><code>ScriptContext</code></td><td>Transaction context available during validation</td></tr>
+    <tr><td><code>txSignedBy</code></td><td>Checks whether a specific key signed the transaction</td></tr>
+    <tr><td><code>traceIfFalse</code></td><td>Debugging utility for script failure messages</td></tr>
+    <tr><td><code>wrapValidator</code></td><td>Converts typed validator to untyped Plutus interface</td></tr>
+    <tr><td><code>mkValidatorScript</code></td><td>Creates a Plutus script from Template Haskell code</td></tr>
+    <tr><td><code>applyCode</code></td><td>Applies parameters to compiled script code</td></tr>
+    <tr><td><code>liftCode</code></td><td>Lifts Haskell values to Template Haskell expressions</td></tr>
+    <tr><td><code>writeValidatorToFile</code></td><td>Saves the script as a deployable <code>.plutus</code> file</td></tr>
+    <tr><td><code>validatorAddressBech32</code></td><td>Converts a validator to a Cardano-compatible address</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

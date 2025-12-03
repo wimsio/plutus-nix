@@ -1,0 +1,221 @@
+<h1>🧩 Tutorial: Understanding and Using <code>ParameterizedVesting.hs</code></h1>
+<p>This tutorial explains the <code>ParameterizedVesting.hs</code> module in depth. You'll learn its structure, how to test it in <code>cabal repl</code>, and how it fits into a larger Plutus development workflow.</p>
+
+
+
+<h2>📑 Table of Contents</h2>
+<ol>
+  <li><a href="#1-module-overview">🧭 Module Overview</a></li>
+  <li><a href="#2-language-extensions">⚙️ Language Extensions</a></li>
+  <li><a href="#3-imports-overview">📦 Imports Overview</a></li>
+  <li><a href="#4-data-definitions">🧱 Data Definitions</a></li>
+  <li><a href="#5-core-validator-logic">🛡️ Core Validator Logic</a></li>
+  <li><a href="#6-helper-functions">🧰 Helper Functions</a></li>
+  <li><a href="#7-compiling-and-saving-the-script">💾 Compiling and Saving the Script</a></li>
+  <li><a href="#8-practical-example-full-workflow">🚀 Practical Example (Full Workflow)</a></li>
+  <li><a href="#9-using-cabal-repl-to-test-and-interact">🧪 Using <code>cabal repl</code> to Test and Interact</a></li>
+  <li><a href="#10-best-practices">✅ Best Practices</a></li>
+  <li><a href="#11-glossary">📘 Glossary</a></li>
+</ol>
+
+
+
+<h2 id="1-module-overview">1. 🧭 Module Overview</h2>
+<p><code>ParameterizedVesting.hs</code> defines a Plutus smart contract that locks funds until a given deadline, allowing only a specific beneficiary to unlock them. Both <code>beneficiary</code> and <code>deadline</code> are passed as parameters.</p>
+
+
+
+<h2 id="2-language-extensions">2. ⚙️ Language Extensions</h2>
+<pre><code>{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NoImplicitPrelude     #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TemplateHaskell       #-}
+</code></pre>
+<p>ℹ️ <em>These extensions enable advanced Haskell features required for Plutus contract compilation and typing.</em></p>
+
+
+
+<h2 id="3-imports-overview">3. 📦 Imports Overview</h2>
+
+<h3>🔗 Plutus API Modules</h3>
+<pre><code>import Plutus.V2.Ledger.Api (BuiltinData, POSIXTime, PubKeyHash, ScriptContext(..), TxInfo(..), Validator, from, mkValidatorScript)
+import Plutus.V2.Ledger.Contexts (txSignedBy)
+import Plutus.V1.Ledger.Interval (contains)
+</code></pre>
+
+<ul>
+  <li>Transaction validation context</li>
+  <li>Time/interval utilities</li>
+  <li>Signature verification</li>
+  <li>Core on-chain types</li>
+</ul>
+
+<h3>🧪 Compilation Helpers</h3>
+<pre><code>import PlutusTx (applyCode, compile, liftCode, makeLift)
+import PlutusTx.Prelude (Bool, traceIfFalse, ($), (&&), (.))
+</code></pre>
+<p>Used for writing Plutus code and compiling to UPLC.</p>
+
+<h3>🧭 Utility Functions</h3>
+<pre><code>import Utilities (wrapValidator, writeValidatorToFile, posixTimeFromIso8601)
+</code></pre>
+<ul>
+  <li><code>wrapValidator</code> for untyped interface</li>
+  <li><code>writeValidatorToFile</code> for <code>.plutus</code> serialization</li>
+  <li><code>posixTimeFromIso8601</code> for time parsing</li>
+</ul>
+
+<h3>🔐 PubKeyHash Conversion</h3>
+<pre><code>import Plutus.V1.Ledger.Crypto (PubKeyHash(..))
+import qualified PlutusTx.Builtins.Class as Builtins
+import qualified Data.ByteString.Char8 as C
+import qualified Data.ByteString.Base16 as B16
+</code></pre>
+<p>Convert string/hex public keys into on-chain format.</p>
+
+
+
+<h2 id="4-data-definitions">4. 🧱 Data Definitions</h2>
+
+<h3><code>VestingParams</code></h3>
+<pre><code>data VestingParams = VestingParams
+    { beneficiary :: PubKeyHash
+    , deadline    :: POSIXTime
+    }
+makeLift ''VestingParams
+</code></pre>
+
+<ul>
+  <li>👤 <strong>beneficiary</strong> — who can withdraw</li>
+  <li>⏱️ <strong>deadline</strong> — when funds can be withdrawn</li>
+</ul>
+
+
+
+<h2 id="5-core-validator-logic">5. 🛡️ Core Validator Logic</h2>
+
+<h3><code>mkParameterizedVestingValidator</code></h3>
+<pre><code>{-# INLINABLE mkParameterizedVestingValidator #-}
+mkParameterizedVestingValidator :: VestingParams -> () -> () -> ScriptContext -> Bool
+mkParameterizedVestingValidator params _ _ ctx =
+    traceIfFalse "beneficiary's signature missing" signedByBeneficiary &&
+    traceIfFalse "deadline not reached" deadlineReached
+  where
+    info = scriptContextTxInfo ctx
+    signedByBeneficiary = txSignedBy info $ beneficiary params
+    deadlineReached = contains (from $ deadline params) $ txInfoValidRange info
+</code></pre>
+
+<ul>
+  <li>✍️ Verifies <strong>beneficiary’s signature</strong></li>
+  <li>⏳ Ensures <strong>validity range ≥ deadline</strong></li>
+</ul>
+
+
+
+<h2 id="6-helper-functions">6. 🧰 Helper Functions</h2>
+
+<h3><code>fromHexPKH</code></h3>
+<pre><code>fromHexPKH :: String -> PubKeyHash
+fromHexPKH hex =
+  case B16.decode (C.pack hex) of
+    Right decoded -> PubKeyHash (Builtins.toBuiltin decoded)
+    Left err      -> error ("Hex decoding failed: " ++ err)
+</code></pre>
+
+<p>Converts a hex public key hash string into a <code>PubKeyHash</code>.</p>
+<p>💡 <em>Optionally validate even-length hex and expected byte size for extra safety.</em></p>
+
+
+
+<h2 id="7-compiling-and-saving-the-script">7. 💾 Compiling and Saving the Script</h2>
+
+<h3><code>validator</code> and <code>saveVal</code></h3>
+<pre><code>validator :: VestingParams -> Validator
+validator params =
+  mkValidatorScript ($$(compile [|| mkWrappedParameterizedVestingValidator ||]) `applyCode` liftCode params)
+
+saveVal :: VestingParams -> IO ()
+saveVal = writeValidatorToFile "./assets/parameterized-vesting.plutus" . validator
+</code></pre>
+
+<ul>
+  <li>🧱 Compiles a parameterized validator</li>
+  <li>📁 Writes a <code>.plutus</code> file for deployment</li>
+</ul>
+
+
+
+<h2 id="8-practical-example-full-workflow">8. 🚀 Practical Example (Full Workflow)</h2>
+<pre><code>import ParameterizedVesting
+import CGPlutusUtilsv1
+import CGTime
+import Plutus.V1.Ledger.Time (POSIXTime(..))
+
+-- Convert Bech32 address to PubKeyHash
+let Right pkh = bech32ToPubKeyHash "addr_test1qp..."
+
+-- Convert POSIXTime from system time
+dd' <- CGTime.getPOSIXNow
+let deadline = POSIXTime (floor dd')
+
+-- Create vesting parameters
+let vp = VestingParams pkh deadline
+
+-- Write the .plutus file
+saveVal vp
+</code></pre>
+
+<p>⚠️ <em>If <code>bech32ToPubKeyHash</code> returns <code>Left</code>, handle it safely instead of using a partial pattern.</em></p>
+
+
+
+<h2 id="9-using-cabal-repl-to-test-and-interact">9. 🧪 Using <code>cabal repl</code> to Test and Interact</h2>
+
+<h3>Step-by-Step</h3>
+<ol>
+  <li><code>cabal repl</code></li>
+  <li><code>:load ParameterizedVesting CGPlutusUtilsv1 CGTime Vesting</code></li>
+  <li>Import modules</li>
+  <li>Define <code>pkh</code>, <code>deadline</code>, <code>vp</code></li>
+  <li><code>saveVal vp</code></li>
+</ol>
+
+<p>🧷 <strong>Quick checks:</strong></p>
+<ul>
+  <li><code>:t validator</code> to confirm types</li>
+  <li>Try invalid Bech32 to verify error paths</li>
+  <li>Regenerate <code>.plutus</code> after param changes</li>
+</ul>
+
+
+
+<h2 id="10-best-practices">10. ✅ Best Practices</h2>
+<ul>
+  <li>🧯 Handle <code>Either</code> safely—avoid partial matches like <code>let Right p = ...</code></li>
+  <li>🧱 Stick to <strong>V2</strong> types consistently</li>
+  <li>🕒 Source deadlines from config/ISO8601 for reproducible builds</li>
+  <li>🏷️ Keep helper names consistent (<code>saveVal</code> vs <code>saveValParam</code>)</li>
+  <li>🧪 Add unit tests: signer checks, deadline boundary, negative cases</li>
+</ul>
+
+
+
+<h2 id="11-glossary">11. 📘 Glossary</h2>
+<table>
+  <thead>
+    <tr><th>🔹 Term</th><th>💬 Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>POSIXTime</code></td><td>Seconds since UNIX epoch; used for on-chain time checks</td></tr>
+    <tr><td><code>PubKeyHash</code></td><td>Hash of a wallet’s public key; identifies beneficiary credentials</td></tr>
+    <tr><td><code>Validator</code></td><td>Plutus smart contract function that approves/rejects spending</td></tr>
+    <tr><td><code>ScriptContext</code></td><td>Transaction info available to the validator</td></tr>
+    <tr><td><code>txSignedBy</code></td><td>Checks if a specific <code>PubKeyHash</code> signed the transaction</td></tr>
+    <tr><td><code>contains</code></td><td>Interval check ensuring valid range meets time constraints</td></tr>
+    <tr><td><code>:load</code></td><td>GHCi command to load modules</td></tr>
+    <tr><td><code>saveVal</code></td><td>Helper to serialize the compiled validator to <code>.plutus</code></td></tr>
+  </tbody>
+</table>

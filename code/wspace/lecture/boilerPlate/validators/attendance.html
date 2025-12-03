@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🗓️ Tutorial: Attendance.hs Deep Dive</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 0; padding: 2px; line-height: 1.6; background: #fff; color: #222; }
+    h1, h2, h3 { color: #002b45; }
+    pre { background: #f0f0f0; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    code { font-family: monospace; background: #fdfdfd; padding: 2px 4px; border-radius: 4px; color: #c7254e; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    table, th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f0f8ff; color: #002b45; }
+    a { color: #0077cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<h1>🗓️ Tutorial: Understanding and Using <code>Attendance.hs</code></h1>
+<p>This tutorial walks you through a production-style, parameterized Plutus V2 validator that tracks attendance days and pays out token rewards in tranches. You’ll learn how the parameters, datum state, and actions work together, and how to compile the contract.</p>
+
+<h2>📑 Table of Contents</h2>
+<ol>
+  <li><a href="#1-language-extensions">⚙️ Language Extensions</a></li>
+  <li><a href="#2-imports">📦 Module Imports</a></li>
+  <li><a href="#3-params">🧱 <code>AttendanceParams</code> Definition</a></li>
+  <li><a href="#4-datum-redeemer">📋 Datum &amp; Redeemer</a></li>
+  <li><a href="#5-validator-logic">🛡️ Core Validator Logic</a></li>
+  <li><a href="#6-wrapper">🎁 Wrapping the Validator</a></li>
+  <li><a href="#7-compilation">💾 Compilation to <code>Validator</code></a></li>
+  <li><a href="#8-example">🚀 Example Parameters &amp; Initial Datum</a></li>
+  <li><a href="#9-glossary">📘 Glossary</a></li>
+</ol>
+
+<h2 id="1-language-extensions">1. ⚙️ Language Extensions</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
+</code></pre>
+<ul>
+  <li><strong>DataKinds</strong>: Enables type-level tags used by Plutus APIs.</li>
+  <li><strong>NoImplicitPrelude</strong>: Uses <code>PlutusTx.Prelude</code> instead of Haskell Prelude.</li>
+  <li><strong>TemplateHaskell</strong>: Needed to compile and lift on-chain code.</li>
+  <li><strong>DeriveAnyClass</strong> &amp; <strong>DeriveGeneric</strong>: Convenient for (de)serialization derivations.</li>
+</ul>
+
+<h2 id="2-imports">2. 📦 Module Imports</h2>
+
+<h3>🧭 Plutus Ledger &amp; Contexts</h3>
+<pre><code>import Plutus.V2.Ledger.Api
+  ( BuiltinData, ScriptContext(..), TxInfo(..), TxOut(..), Address(..)
+  , Credential(..), Validator, Datum(..), OutputDatum(..)
+  , mkValidatorScript, ValidatorHash, Value )
+import Plutus.V2.Ledger.Contexts
+  ( txSignedBy, findOwnInput, getContinuingOutputs
+  , scriptContextTxInfo, txOutAddress, txOutValue )
+import Plutus.V1.Ledger.Value (AssetClass(..), assetClassValue)
+</code></pre>
+<ul>
+  <li><strong>Validator</strong>/<strong>mkValidatorScript</strong>: for the compiled script.</li>
+  <li><strong>ScriptContext</strong>/<strong>TxInfo</strong>: transaction data available in validation.</li>
+  <li><strong>findOwnInput</strong>/<strong>getContinuingOutputs</strong>: state-machine style transitions.</li>
+  <li><strong>AssetClass</strong>/<strong>assetClassValue</strong>: token arithmetic for payouts.</li>
+</ul>
+
+<h3>🧪 Compilation &amp; Prelude</h3>
+<pre><code>import PlutusTx
+import PlutusTx.Prelude
+</code></pre>
+<p>Supplies <code>compile</code>, <code>applyCode</code>, <code>liftCode</code> (via <code>PlutusTx</code>) and on-chain primitives (via <code>PlutusTx.Prelude</code>).</p>
+
+<h2 id="3-params">3. 🧱 Defining <code>AttendanceParams</code></h2>
+<pre><code>data AttendanceParams = AttendanceParams
+  { apOracleAdmin      :: PubKeyHash    -- who may mark attendance
+  , apTrancheSizeDays  :: Integer       -- days per tranche (e.g., 5)
+  , apRewardAsset      :: AssetClass    -- reward (policy id, token name)
+  , apRewardPerTranche :: Integer       -- amount per tranche
+  }
+PlutusTx.unstableMakeIsData ''AttendanceParams
+PlutusTx.makeLift               ''AttendanceParams
+</code></pre>
+<ul>
+  <li><code>apOracleAdmin</code>: Only this key can mark days.</li>
+  <li><code>apTrancheSizeDays</code>: How many days make one reward tranche.</li>
+  <li><code>apRewardAsset</code> &amp; <code>apRewardPerTranche</code>: Which token and how much to pay per tranche.</li>
+</ul>
+
+<h2 id="4-datum-redeemer">4. 📋 Datum &amp; Redeemer</h2>
+<pre><code>data AttendanceDatum = AttendanceDatum
+  { adUserAddress  :: PubKeyHash  -- the attendee
+  , adTotalDays    :: Integer     -- cumulative attendance
+  , adTrancheLevel :: Integer     -- tranches already claimed
+  }
+PlutusTx.unstableMakeIsData ''AttendanceDatum
+
+data AttendanceAction = MarkAttendance | ClaimTranche
+PlutusTx.unstableMakeIsData ''AttendanceAction
+</code></pre>
+<ul>
+  <li><strong>Datum</strong> is the on-chain state. <code>adTrancheLevel</code> prevents double-claiming.</li>
+  <li><strong>Redeemer</strong> selects action: admin adds a day; user claims reward.</li>
+</ul>
+
+<h2 id="5-validator-logic">5. 🛡️ Core Validator Logic</h2>
+
+<h3>5.1 High-Level Idea</h3>
+<p>The script is a single-UTxO state machine. Each transaction consumes the script UTxO and must produce <em>exactly one</em> continuing output back to the same script address carrying an <strong>inline datum</strong> with the updated state.</p>
+
+<h3>5.2 Code</h3>
+<pre><code>{-# INLINABLE mkAttendanceValidator #-}
+mkAttendanceValidator
+  :: AttendanceParams
+  -> AttendanceDatum
+  -> AttendanceAction
+  -> ScriptContext
+  -> Bool
+mkAttendanceValidator params datum action ctx = case action of
+  -- Admin increments days; value unchanged
+  MarkAttendance ->
+       traceIfFalse "admin signature missing" (txSignedBy info (apOracleAdmin params))
+    && traceIfFalse "must keep same script"   (sameScript inRef outRef)
+    && traceIfFalse "value must be same"      (txOutValue inRef == txOutValue outRef)
+    && traceIfFalse "bad updated datum"       checkUpdated
+    where
+      outRef = oneContinuingOut ctx
+      newD   = readInlineDatum outRef
+      checkUpdated = adUserAddress newD == adUserAddress datum
+                  && adTrancheLevel newD == adTrancheLevel datum
+                  && adTotalDays newD    == adTotalDays datum + 1
+
+  -- User claims all newly eligible tranches; script pays out tokens
+  ClaimTranche ->
+       traceIfFalse "user signature missing" (txSignedBy info (adUserAddress datum))
+    && traceIfFalse "must keep same script"  (sameScript inRef outRef)
+    && traceIfFalse "no new tranche"         (newClaimed > 0)
+    && traceIfFalse "bad updated datum"      checkUpdated
+    && traceIfFalse "wrong value delta"      valueOK
+    where
+      outRef = oneContinuingOut ctx
+      newD   = readInlineDatum outRef
+      trancheSize = apTrancheSizeDays params
+      already     = adTrancheLevel datum
+      eligAll     = eligibleTranches (adTotalDays datum) trancheSize
+      newLevel    = eligAll
+      newClaimed  = newLevel - already
+      expectedPayoutUnits = newClaimed * apRewardPerTranche params
+      valueOK = let expectedOut = txOutValue inRef <> negate (payoutValue (apRewardAsset params) expectedPayoutUnits)
+                in  txOutValue outRef == expectedOut
+      checkUpdated = adUserAddress newD  == adUserAddress datum
+                  && adTotalDays newD    == adTotalDays datum
+                  && adTrancheLevel newD == newLevel
+  where
+    info  = scriptContextTxInfo ctx
+    inRef = ownInputOut ctx
+</code></pre>
+
+<h3>5.3 Helper Functions</h3>
+<pre><code>{-# INLINABLE ownInputOut #-}
+ownInputOut ctx = maybe (traceError "own input not found") txInInfoResolved (findOwnInput ctx)
+
+{-# INLINABLE oneContinuingOut #-}
+oneContinuingOut ctx = case getContinuingOutputs ctx of
+  [o] -> o; _ -> traceError "expect exactly one continuing output"
+
+{-# INLINABLE readInlineDatum #-}
+readInlineDatum o = case txOutDatum o of
+  OutputDatum (Datum d) -> unsafeFromBuiltinData d
+  _ -> traceError "expected inline datum"
+
+{-# INLINABLE sameScript #-}
+sameScript a b = txOutAddress a == txOutAddress b
+
+{-# INLINABLE eligibleTranches #-}
+eligibleTranches totalDays trancheSize =
+  if trancheSize <= 0 then traceError "bad tranche size" else totalDays `divide` trancheSize
+
+{-# INLINABLE payoutValue #-}
+payoutValue ac n = assetClassValue ac n
+</code></pre>
+
+<h2 id="6-wrapper">6. 🎁 Wrapping the Validator</h2>
+<pre><code>{-# INLINABLE mkWrapped #-}
+mkWrapped :: BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkWrapped p d r c =
+  let ps  = unsafeFromBuiltinData p
+      dt  = unsafeFromBuiltinData d
+      act = unsafeFromBuiltinData r
+      ctx = unsafeFromBuiltinData c
+  in  check (mkAttendanceValidator ps dt act ctx)
+  where
+    check True  = ()
+    check False = traceError "attendance validation failed"
+</code></pre>
+<p>This converts the typed validator into the untyped entrypoint Plutus expects.</p>
+
+<h2 id="7-compilation">7. 💾 Compilation to <code>Validator</code></h2>
+<pre><code>validator :: AttendanceParams -> Validator
+validator ps =
+  mkValidatorScript (
+    $$(PlutusTx.compile [|| \ps' -> mkWrapped ps' ||])
+      `PlutusTx.applyCode` PlutusTx.liftCode ps
+  )
+
+validatorHash' :: AttendanceParams -> ValidatorHash
+validatorHash' = validatorHash . validator
+
+validatorAddress :: AttendanceParams -> Address
+validatorAddress ps = Address (ScriptCredential (validatorHash' ps)) Nothing
+</code></pre>
+<ul>
+  <li><code>compile</code>: Turns Haskell into Plutus Core.</li>
+  <li><code>applyCode</code> + <code>liftCode</code>: Specialize the parameterized validator.</li>
+  <li><code>validatorAddress</code>: Construct the script address (use your own Bech32 helpers off‑chain).</li>
+</ul>
+
+<h2 id="8-example">8. 🚀 Example Parameters &amp; Initial Datum</h2>
+<pre><code>exampleParams :: AttendanceParams
+exampleParams = AttendanceParams
+  { apOracleAdmin      = &lt;admin_pkh&gt;
+  , apTrancheSizeDays  = 5
+  , apRewardAsset      = AssetClass (&lt;policyId&gt;, &lt;tokenName&gt;)
+  , apRewardPerTranche = 1000
+  }
+
+initialDatum :: PubKeyHash -> AttendanceDatum
+initialDatum user = AttendanceDatum
+  { adUserAddress  = user
+  , adTotalDays    = 0
+  , adTrancheLevel = 0
+  }
+</code></pre>
+<p>Create an initial script UTxO at <code>validatorAddress exampleParams</code> with <em>inline</em> <code>initialDatum user</code> and enough reward tokens. Admin submits <code>MarkAttendance</code> updates; the user submits <code>ClaimTranche</code> to receive payouts.</p>
+
+<h2 id="9-glossary">9. 📘 Glossary</h2>
+<table>
+  <thead>
+    <tr><th>🔹 Term</th><th>💬 Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AttendanceParams</code></td><td>Off-chain chosen parameters (admin key, tranche size, reward asset, reward amount)</td></tr>
+    <tr><td><code>AttendanceDatum</code></td><td>On-chain state (user, total days, claimed tranches)</td></tr>
+    <tr><td><code>AttendanceAction</code></td><td>On-chain action: <code>MarkAttendance</code> or <code>ClaimTranche</code></td></tr>
+    <tr><td><code>Continuing Output</code></td><td>Output back to the same script carrying the next state</td></tr>
+    <tr><td><code>Inline Datum</code></td><td>Datum embedded directly in the output (not by hash)</td></tr>
+    <tr><td><code>AssetClass</code></td><td>Pair (policy id, token name) identifying a token</td></tr>
+    <tr><td><code>applyCode / liftCode</code></td><td>Template Haskell helpers to specialize parameterized validators</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🗓️ Tutorial: Attendance.hs Deep Dive</title>
+  <style>
+    body { font-family: "Segoe UI", sans-serif; margin: 0; padding: 2px; line-height: 1.6; background: #fff; color: #222; }
+    h1, h2, h3 { color: #002b45; }
+    pre { background: #f0f0f0; padding: 12px; border-radius: 6px; overflow-x: auto; }
+    code { font-family: monospace; background: #fdfdfd; padding: 2px 4px; border-radius: 4px; color: #c7254e; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    table, th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f0f8ff; color: #002b45; }
+    a { color: #0077cc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<h1>🗓️ Tutorial: Understanding and Using <code>Attendance.hs</code></h1>
+<p>This tutorial walks you through a production-style, parameterized Plutus V2 validator that tracks attendance days and pays out token rewards in tranches. You’ll learn how the parameters, datum state, and actions work together, and how to compile the contract.</p>
+
+<h2>📑 Table of Contents</h2>
+<ol>
+  <li><a href="#1-language-extensions">⚙️ Language Extensions</a></li>
+  <li><a href="#2-imports">📦 Module Imports</a></li>
+  <li><a href="#3-params">🧱 <code>AttendanceParams</code> Definition</a></li>
+  <li><a href="#4-datum-redeemer">📋 Datum &amp; Redeemer</a></li>
+  <li><a href="#5-validator-logic">🛡️ Core Validator Logic</a></li>
+  <li><a href="#6-wrapper">🎁 Wrapping the Validator</a></li>
+  <li><a href="#7-compilation">💾 Compilation to <code>Validator</code></a></li>
+  <li><a href="#8-example">🚀 Example Parameters &amp; Initial Datum</a></li>
+  <li><a href="#9-glossary">📘 Glossary</a></li>
+</ol>
+
+<h2 id="1-language-extensions">1. ⚙️ Language Extensions</h2>
+<pre><code>{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
+</code></pre>
+<ul>
+  <li><strong>DataKinds</strong>: Enables type-level tags used by Plutus APIs.</li>
+  <li><strong>NoImplicitPrelude</strong>: Uses <code>PlutusTx.Prelude</code> instead of Haskell Prelude.</li>
+  <li><strong>TemplateHaskell</strong>: Needed to compile and lift on-chain code.</li>
+  <li><strong>DeriveAnyClass</strong> &amp; <strong>DeriveGeneric</strong>: Convenient for (de)serialization derivations.</li>
+</ul>
+
+<h2 id="2-imports">2. 📦 Module Imports</h2>
+
+<h3>🧭 Plutus Ledger &amp; Contexts</h3>
+<pre><code>import Plutus.V2.Ledger.Api
+  ( BuiltinData, ScriptContext(..), TxInfo(..), TxOut(..), Address(..)
+  , Credential(..), Validator, Datum(..), OutputDatum(..)
+  , mkValidatorScript, ValidatorHash, Value )
+import Plutus.V2.Ledger.Contexts
+  ( txSignedBy, findOwnInput, getContinuingOutputs
+  , scriptContextTxInfo, txOutAddress, txOutValue )
+import Plutus.V1.Ledger.Value (AssetClass(..), assetClassValue)
+</code></pre>
+<ul>
+  <li><strong>Validator</strong>/<strong>mkValidatorScript</strong>: for the compiled script.</li>
+  <li><strong>ScriptContext</strong>/<strong>TxInfo</strong>: transaction data available in validation.</li>
+  <li><strong>findOwnInput</strong>/<strong>getContinuingOutputs</strong>: state-machine style transitions.</li>
+  <li><strong>AssetClass</strong>/<strong>assetClassValue</strong>: token arithmetic for payouts.</li>
+</ul>
+
+<h3>🧪 Compilation &amp; Prelude</h3>
+<pre><code>import PlutusTx
+import PlutusTx.Prelude
+</code></pre>
+<p>Supplies <code>compile</code>, <code>applyCode</code>, <code>liftCode</code> (via <code>PlutusTx</code>) and on-chain primitives (via <code>PlutusTx.Prelude</code>).</p>
+
+<h2 id="3-params">3. 🧱 Defining <code>AttendanceParams</code></h2>
+<pre><code>data AttendanceParams = AttendanceParams
+  { apOracleAdmin      :: PubKeyHash    -- who may mark attendance
+  , apTrancheSizeDays  :: Integer       -- days per tranche (e.g., 5)
+  , apRewardAsset      :: AssetClass    -- reward (policy id, token name)
+  , apRewardPerTranche :: Integer       -- amount per tranche
+  }
+PlutusTx.unstableMakeIsData ''AttendanceParams
+PlutusTx.makeLift               ''AttendanceParams
+</code></pre>
+<ul>
+  <li><code>apOracleAdmin</code>: Only this key can mark days.</li>
+  <li><code>apTrancheSizeDays</code>: How many days make one reward tranche.</li>
+  <li><code>apRewardAsset</code> &amp; <code>apRewardPerTranche</code>: Which token and how much to pay per tranche.</li>
+</ul>
+
+<h2 id="4-datum-redeemer">4. 📋 Datum &amp; Redeemer</h2>
+<pre><code>data AttendanceDatum = AttendanceDatum
+  { adUserAddress  :: PubKeyHash  -- the attendee
+  , adTotalDays    :: Integer     -- cumulative attendance
+  , adTrancheLevel :: Integer     -- tranches already claimed
+  }
+PlutusTx.unstableMakeIsData ''AttendanceDatum
+
+data AttendanceAction = MarkAttendance | ClaimTranche
+PlutusTx.unstableMakeIsData ''AttendanceAction
+</code></pre>
+<ul>
+  <li><strong>Datum</strong> is the on-chain state. <code>adTrancheLevel</code> prevents double-claiming.</li>
+  <li><strong>Redeemer</strong> selects action: admin adds a day; user claims reward.</li>
+</ul>
+
+<h2 id="5-validator-logic">5. 🛡️ Core Validator Logic</h2>
+
+<h3>5.1 High-Level Idea</h3>
+<p>The script is a single-UTxO state machine. Each transaction consumes the script UTxO and must produce <em>exactly one</em> continuing output back to the same script address carrying an <strong>inline datum</strong> with the updated state.</p>
+
+<h3>5.2 Code</h3>
+<pre><code>{-# INLINABLE mkAttendanceValidator #-}
+mkAttendanceValidator
+  :: AttendanceParams
+  -> AttendanceDatum
+  -> AttendanceAction
+  -> ScriptContext
+  -> Bool
+mkAttendanceValidator params datum action ctx = case action of
+  -- Admin increments days; value unchanged
+  MarkAttendance ->
+       traceIfFalse "admin signature missing" (txSignedBy info (apOracleAdmin params))
+    && traceIfFalse "must keep same script"   (sameScript inRef outRef)
+    && traceIfFalse "value must be same"      (txOutValue inRef == txOutValue outRef)
+    && traceIfFalse "bad updated datum"       checkUpdated
+    where
+      outRef = oneContinuingOut ctx
+      newD   = readInlineDatum outRef
+      checkUpdated = adUserAddress newD == adUserAddress datum
+                  && adTrancheLevel newD == adTrancheLevel datum
+                  && adTotalDays newD    == adTotalDays datum + 1
+
+  -- User claims all newly eligible tranches; script pays out tokens
+  ClaimTranche ->
+       traceIfFalse "user signature missing" (txSignedBy info (adUserAddress datum))
+    && traceIfFalse "must keep same script"  (sameScript inRef outRef)
+    && traceIfFalse "no new tranche"         (newClaimed > 0)
+    && traceIfFalse "bad updated datum"      checkUpdated
+    && traceIfFalse "wrong value delta"      valueOK
+    where
+      outRef = oneContinuingOut ctx
+      newD   = readInlineDatum outRef
+      trancheSize = apTrancheSizeDays params
+      already     = adTrancheLevel datum
+      eligAll     = eligibleTranches (adTotalDays datum) trancheSize
+      newLevel    = eligAll
+      newClaimed  = newLevel - already
+      expectedPayoutUnits = newClaimed * apRewardPerTranche params
+      valueOK = let expectedOut = txOutValue inRef <> negate (payoutValue (apRewardAsset params) expectedPayoutUnits)
+                in  txOutValue outRef == expectedOut
+      checkUpdated = adUserAddress newD  == adUserAddress datum
+                  && adTotalDays newD    == adTotalDays datum
+                  && adTrancheLevel newD == newLevel
+  where
+    info  = scriptContextTxInfo ctx
+    inRef = ownInputOut ctx
+</code></pre>
+
+<h3>5.3 Helper Functions</h3>
+<pre><code>{-# INLINABLE ownInputOut #-}
+ownInputOut ctx = maybe (traceError "own input not found") txInInfoResolved (findOwnInput ctx)
+
+{-# INLINABLE oneContinuingOut #-}
+oneContinuingOut ctx = case getContinuingOutputs ctx of
+  [o] -> o; _ -> traceError "expect exactly one continuing output"
+
+{-# INLINABLE readInlineDatum #-}
+readInlineDatum o = case txOutDatum o of
+  OutputDatum (Datum d) -> unsafeFromBuiltinData d
+  _ -> traceError "expected inline datum"
+
+{-# INLINABLE sameScript #-}
+sameScript a b = txOutAddress a == txOutAddress b
+
+{-# INLINABLE eligibleTranches #-}
+eligibleTranches totalDays trancheSize =
+  if trancheSize <= 0 then traceError "bad tranche size" else totalDays `divide` trancheSize
+
+{-# INLINABLE payoutValue #-}
+payoutValue ac n = assetClassValue ac n
+</code></pre>
+
+<h2 id="6-wrapper">6. 🎁 Wrapping the Validator</h2>
+<pre><code>{-# INLINABLE mkWrapped #-}
+mkWrapped :: BuiltinData -> BuiltinData -> BuiltinData -> BuiltinData -> ()
+mkWrapped p d r c =
+  let ps  = unsafeFromBuiltinData p
+      dt  = unsafeFromBuiltinData d
+      act = unsafeFromBuiltinData r
+      ctx = unsafeFromBuiltinData c
+  in  check (mkAttendanceValidator ps dt act ctx)
+  where
+    check True  = ()
+    check False = traceError "attendance validation failed"
+</code></pre>
+<p>This converts the typed validator into the untyped entrypoint Plutus expects.</p>
+
+<h2 id="7-compilation">7. 💾 Compilation to <code>Validator</code></h2>
+<pre><code>validator :: AttendanceParams -> Validator
+validator ps =
+  mkValidatorScript (
+    $$(PlutusTx.compile [|| \ps' -> mkWrapped ps' ||])
+      `PlutusTx.applyCode` PlutusTx.liftCode ps
+  )
+
+validatorHash' :: AttendanceParams -> ValidatorHash
+validatorHash' = validatorHash . validator
+
+validatorAddress :: AttendanceParams -> Address
+validatorAddress ps = Address (ScriptCredential (validatorHash' ps)) Nothing
+</code></pre>
+<ul>
+  <li><code>compile</code>: Turns Haskell into Plutus Core.</li>
+  <li><code>applyCode</code> + <code>liftCode</code>: Specialize the parameterized validator.</li>
+  <li><code>validatorAddress</code>: Construct the script address (use your own Bech32 helpers off‑chain).</li>
+</ul>
+
+<h2 id="8-example">8. 🚀 Example Parameters &amp; Initial Datum</h2>
+<pre><code>exampleParams :: AttendanceParams
+exampleParams = AttendanceParams
+  { apOracleAdmin      = &lt;admin_pkh&gt;
+  , apTrancheSizeDays  = 5
+  , apRewardAsset      = AssetClass (&lt;policyId&gt;, &lt;tokenName&gt;)
+  , apRewardPerTranche = 1000
+  }
+
+initialDatum :: PubKeyHash -> AttendanceDatum
+initialDatum user = AttendanceDatum
+  { adUserAddress  = user
+  , adTotalDays    = 0
+  , adTrancheLevel = 0
+  }
+</code></pre>
+<p>Create an initial script UTxO at <code>validatorAddress exampleParams</code> with <em>inline</em> <code>initialDatum user</code> and enough reward tokens. Admin submits <code>MarkAttendance</code> updates; the user submits <code>ClaimTranche</code> to receive payouts.</p>
+
+<h2 id="9-glossary">9. 📘 Glossary</h2>
+<table>
+  <thead>
+    <tr><th>🔹 Term</th><th>💬 Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>AttendanceParams</code></td><td>Off-chain chosen parameters (admin key, tranche size, reward asset, reward amount)</td></tr>
+    <tr><td><code>AttendanceDatum</code></td><td>On-chain state (user, total days, claimed tranches)</td></tr>
+    <tr><td><code>AttendanceAction</code></td><td>On-chain action: <code>MarkAttendance</code> or <code>ClaimTranche</code></td></tr>
+    <tr><td><code>Continuing Output</code></td><td>Output back to the same script carrying the next state</td></tr>
+    <tr><td><code>Inline Datum</code></td><td>Datum embedded directly in the output (not by hash)</td></tr>
+    <tr><td><code>AssetClass</code></td><td>Pair (policy id, token name) identifying a token</td></tr>
+    <tr><td><code>applyCode / liftCode</code></td><td>Template Haskell helpers to specialize parameterized validators</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

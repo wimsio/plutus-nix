@@ -1,6 +1,6 @@
 cabal-version:      3.4
 name:               wspace
-version:            0.1.0.0
+version:            0.1.2.6
 author:             IOG's education team, Bernard Sibanda
 maintainer:         education@iohk.io, cto@wims.io
 license:            Apache-2.0
@@ -24,7 +24,8 @@ common common-all
         utilities,
         cardano-ledger-shelley,
         bech32 >=1.1 && <2.0,
-        time
+        time,
+        template-haskell
     default-language: Haskell2010
     ghc-options:
         -Wno-unused-packages
@@ -51,41 +52,30 @@ common common-all-tests
 
 library 
     import:            common-all
-    hs-source-dirs:    lecture
+    hs-source-dirs:    lecture,tests,lecture/boilerPlate
     exposed-modules:
       CGPlutusUtilsv1
       CGTime
-      Demo
-      Mint
       ParameterizedVesting
       Vesting
+      TemplateHaskellDemo
+      TemplateHaskellDemoSpec
+      Template
+      UniversalTestLockUnlock
+      Universal
+      AMM
       SimpleValidator
-      MoranNFT
+      MoranNft
     build-depends:
       base >=4.14 && <5,      
       time,
-      bytestring
+      bytestring,
+      tasty >=1.4,
+      tasty-hunit >=0.10
     default-language: Haskell2010
 
 executable escrow-exe
     main-is:            Escrow.hs
-    hs-source-dirs:     tests
-    build-depends:
-        base >=4.14 && <5,
-        plutus-ledger-api,
-        plutus-tx,
-        plutus-tx-plugin,
-        bytestring,
-        serialise,
-        text,
-        containers,
-        cardano-api,
-        cardano-ledger-core,
-        cardano-ledger-shelley
-    default-language:   Haskell2010
-
-executable snapshot-exe
-    main-is:            Snapshot.hs
     hs-source-dirs:     tests
     build-depends:
         base >=4.14 && <5,
@@ -169,59 +159,8 @@ executable synthetic-assets-exe
         cardano-ledger-shelley
     default-language:   Haskell2010
 
-executable limit-order-exe
-    main-is:            Limit-Order.hs
-    hs-source-dirs:     tests
-    build-depends:
-        base >=4.14 && <5,
-        plutus-ledger-api,
-        plutus-tx,
-        plutus-tx-plugin,
-        bytestring,
-        serialise,
-        text,
-        containers,
-        cardano-api,
-        cardano-ledger-core,
-        cardano-ledger-shelley
-    default-language:   Haskell2010
-
-executable file-exe
-    main-is:            File.hs
-    hs-source-dirs:     tests
-    build-depends:
-        base >=4.14 && <5,
-        plutus-ledger-api,
-        plutus-tx,
-        plutus-tx-plugin,
-        bytestring,
-        serialise,
-        text,
-        containers,
-        cardano-api,
-        cardano-ledger-core,
-        cardano-ledger-shelley
-    default-language:   Haskell2010
-
 executable rebase-token-policy-exe
     main-is:            Rebase-Token-Policy.hs
-    hs-source-dirs:     tests
-    build-depends:
-        base >=4.14 && <5,
-        plutus-ledger-api,
-        plutus-tx,
-        plutus-tx-plugin,
-        bytestring,
-        serialise,
-        text,
-        containers,
-        cardano-api,
-        cardano-ledger-core,
-        cardano-ledger-shelley
-    default-language:   Haskell2010
-
-executable energy-p2p-exe
-    main-is:            Energyp2p.hs
     hs-source-dirs:     tests
     build-depends:
         base >=4.14 && <5,
@@ -339,17 +278,20 @@ executable ip-exe
         cardano-ledger-shelley
     default-language:   Haskell2010
 test-suite wspace-tests
-    import:              common-all-tests
-    type:                exitcode-stdio-1.0
-    hs-source-dirs:      tests
-    main-is:             Spec.hs
-    build-depends:
+  import:              common-all-tests
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      tests
+  main-is:             Spec.hs
+  build-depends:
+      base >=4.14 && <5,
       wspace,
-      utilities
-    other-modules:
+      utilities,
+      tasty >=1.4,
+      tasty-hunit >=0.10
+  other-modules:
       CGPlutusUtilsSpec
       CGTimeSpec
       ParameterizedVestingSpec
       VestingSpec
-      DemoSpec
-    default-language:    Haskell2010
+      TemplateHaskellDemoSpec
+  default-language:    Haskell2010

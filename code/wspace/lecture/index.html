@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Haskell Plutus Smart Contract Playground</title>
+ <link rel="stylesheet" href="index.css">
+</head>
+
+<body class="theme-midnight">
+<header>
+  <div class="logo">💎 Haskell Plutus Smart Contract Tutorial Playground</div>
+
+  <div class="header-right">
+    <div class="theme-switcher">
+      <span class="theme-label">Theme</span>
+      <button type="button" class="theme-pill is-active" data-theme="midnight">Midnight</button>
+      <button type="button" class="theme-pill" data-theme="sunrise">Sunrise</button>
+      <button type="button" class="theme-pill" data-theme="forest">Forest</button>
+      <button type="button" class="theme-pill" data-theme="terminal">Terminal</button>
+      <button type="button" class="theme-pill" data-theme="solarized">Solarized</button>
+      <button type="button" class="theme-pill" data-theme="cardano">Cardano</button>
+    </div>
+
+    <button id="toggleBtn">☰ Menu</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="sidebar" id="sidebar">
+    <button class="menu-btn" onclick="showEditor('onchain')">&#9881; Onchain</button>
+    <button class="menu-btn" onclick="showEditor('offchain')">&#128187; Offchain</button>
+    <button class="menu-btn" onclick="showEditor('deploy')">&#128640; Deploy</button>
+    <button class="menu-btn" onclick="showEditor('test')">&#129514; Test</button>
+    <hr>
+  </div>
+
+  <div class="content">
+    <div class="editor-split-view">
+      <!-- Onchain -->
+      <div class="editor active" id="onchain">
+        <div class="toolbar">
+          <button class="tool-btn" title="Download Code" onclick="downloadCode()">⬇️</button>
+          <button class="tool-btn" title="Copy Code" onclick="copyCode()">📋</button>
+          <button class="tool-btn" title="Clear Logs" onclick="clearLogs()">🧹</button>
+          <button class="tool-btn" title="Refresh" onclick="hardRefresh()">🔄</button>
+        </div>
+        <h3>1. Onchain Code</h3>
+
+        <div class="template-switcher">
+          <button class="template-pill" data-template="template" data-filename="./boilerPlate/validators/template.html">Template</button>
+          <button class="template-pill" data-template="escrow" data-filename="./boilerPlate/validators/escrow.html">Escrow</button>
+          <button class="template-pill" data-template="flashloans" data-filename="./boilerPlate/validators/flashloans.html">Flash Loans</button>
+          <button class="template-pill" data-template="donation" data-filename="./boilerPlate/validators/donation.html">Donation</button>
+          <button class="template-pill" data-template="swap" data-filename="./boilerPlate/validators/swap.html">Swap</button>
+          <button class="template-pill" data-template="will" data-filename="./boilerPlate/validators/will.html">Will</button>
+          <button class="template-pill" data-template="voting" data-filename="./boilerPlate/validators/voting.html">Voting</button>
+          <button class="template-pill" data-template="attendance" data-filename="./boilerPlate/validators/attendance.html">Attendance</button>
+          <button
+            class="template-pill"
+            data-template="coxyplutusbuilder"
+            data-filename="../../../coxy-plutus-builder/coxy-plutus-builder-tutorial.html">
+            Coxy Plutus Builder
+          </button>
+        </div>
+
+        <br>
+        <iframe id="onchainCodeTutorialFrame"></iframe>
+        <textarea id="onchainCode" placeholder="Click a template to insert a full Plutus module here..."></textarea>
+      </div>
+
+      <!-- Tutorial Panel -->
+      <div class="editor tutorial-view" id="tutorial" style="display: none;">
+        <iframe id="tutorialFrame"></iframe>
+      </div>
+    </div>
+
+    <!-- Other panels -->
+    <div class="editor" id="offchain">
+      <h3>2. Offchain Code Editor</h3>
+      <textarea id="offchainCode" placeholder="Build Helios transaction code here..."></textarea>
+    </div>
+
+    <div class="editor" id="deploy">
+      <h3>3. Deploy Frontend UI</h3>
+      <textarea id="deployCode" placeholder="Deployment scripts or CLI commands..."></textarea>
+    </div>
+
+    <div class="editor" id="test">
+      <h3>4. Test Panel</h3>
+      <textarea id="testCode" placeholder="Run simulation or test logs..."></textarea>
+    </div>
+
+    <div class="debug-console" id="debugConsole">[INFO] Debug console initialized.</div>
+  </div>
+</div>
+
+<footer>© 2025 Coxygen Global Pty Ltd — MIT License — All Rights Reserved</footer>
+<script type="module" src="index.js"></script>
+</body>
+</html>
