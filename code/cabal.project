@@ -151,6 +151,18 @@ source-repository-package
       -- cardano-addresses
       core
 
+
+source-repository-package
+  type: git
+  location: https://github.com/input-output-hk/plutus-apps.git
+  tag: v1.1.0
+  subdir:
+    plutus-ledger
+    plutus-ledger-api
+    plutus-contract
+    plutus-ledger-emulator
+    plutus-script-utils
+
 -- This is needed because we rely on an unreleased feature
 -- https://github.com/input-output-hk/cardano-ledger/pull/3111
 source-repository-package
