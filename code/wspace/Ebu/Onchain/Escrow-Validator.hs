@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module Main where
+module Escrow-Validator where
 
 import Prelude (IO, FilePath, String, putStrLn, (<>))
 import qualified Prelude as P
