@@ -338,3 +338,20 @@ test-suite wspace-tests
       VestingSpec
       TemplateHaskellDemoSpec
   default-language:    Haskell2010
+
+test-suite escrow-emulator
+  type: exitcode-stdio-1.0
+  hs-source-dirs: EBU/Offchain
+  main-is: Emulator.hs
+
+  import: common-all-tests
+
+  build-depends:
+      base >=4.14 && <5
+    , wspace          
+    , bytestring
+    , containers
+    , text
+
+  default-language: Haskell2010
+
