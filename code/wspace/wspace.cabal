@@ -47,8 +47,14 @@ common common-all-tests
       bytestring,
       base16-bytestring,
       plutus-simple-model,
-      plutus-ledger-api
+      plutus-ledger-api,
+      plutus-contract,
+      plutus-ledger,
+      plutus-ledger-emulator,
+      plutus-script-utils,
+      cardano-api
     default-language: Haskell2010
+
 
 library 
     import:            common-all
