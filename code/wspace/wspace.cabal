@@ -52,7 +52,7 @@ common common-all-tests
 
 library 
     import:            common-all
-    hs-source-dirs:    lecture,tests,lecture/boilerPlate
+    hs-source-dirs:    lecture,tests,lecture/boilerPlate,EBU/Onchain
     exposed-modules:
       CGPlutusUtilsv1
       CGTime
