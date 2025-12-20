@@ -1,4 +1,4 @@
-# 🧾 Detailed Tutorial: Understanding and Using the Multi-Signature Escrow Contract
+# 🧾 Detailed Tutorial: Multi-Signature Escrow Smart Contract
 
 This tutorial covers a sophisticated multi-signature escrow smart contract (`PublicFund.hs`) that enables secure fund management with approval workflows. The contract supports deposit locking, official approvals, beneficiary releases, and depositor refunds under specific conditions.
 
@@ -21,53 +21,96 @@ This tutorial covers a sophisticated multi-signature escrow smart contract (`Pub
 
 ## 1. 🏗️ Architectural Overview
 
-### System Architecture Diagram
+### System Architecture
 
+```mermaid
+flowchart TD
+    subgraph "Off-Chain Components"
+        W1[Depositor<br/>Wallet 1]
+        W2[Beneficiary<br/>Wallet 2]
+        W3[Official 1<br/>Wallet 3]
+        W4[Official 2<br/>Wallet 4]
+        
+        subgraph "Endpoints"
+            EP1[lock]
+            EP2[approve]
+            EP3[release]
+            EP4[refund]
+        end
+        
+        subgraph "Emulator Trace"
+            ET[Test Execution Flow]
+        end
+    end
+    
+    subgraph "On-Chain Components"
+        SC[Smart Contract<br/>PublicFund.hs]
+        V[Validator Logic]
+        D[EscrowDatum]
+        A[EscrowAction]
+    end
+    
+    subgraph "Blockchain Layer"
+        BC[Cardano Ledger]
+        UTXO[Script UTxO]
+    end
+    
+    %% Connections
+    W1 --> EP1
+    EP1 --> SC
+    W3 --> EP2
+    W4 --> EP2
+    EP2 --> SC
+    W2 --> EP3
+    EP3 --> SC
+    W1 --> EP4
+    EP4 --> SC
+    
+    SC --> V
+    V --> D
+    V --> A
+    SC --> UTXO
+    UTXO --> BC
+    
+    ET -.-> EP1
+    ET -.-> EP2
+    ET -.-> EP3
+    ET -.-> EP4
 ```
-┌─────────────────┐     ┌─────────────────────────────┐     ┌─────────────────┐
-│                 │     │                             │     │                 │
-│   Depositor     │────▶│    On-Chain Validator       │◀────│   Beneficiary   │
-│   (Wallet 1)    │     │   (PublicFund.hs)           │     │   (Wallet 2)    │
-│                 │     │                             │     │                 │
-└─────────────────┘     │  • Lock funds              │     └─────────────────┘
-                        │  • Validate Approve/Release│
-┌─────────────────┐     │  • Validate Refund         │     ┌─────────────────┐
-│                 │     │  • Track approvals         │     │                 │
-│   Official 1    │────▶│                             │◀────│   Official 2    │
-│   (Wallet 3)    │     └─────────────────────────────┘     │   (Wallet 4)    │
-│                 │               │                          │                 │
-└─────────────────┘               │                          └─────────────────┘
-                                  │
-                        ┌─────────┴─────────┐
-                        │                   │
-                        │   Off-Chain       │
-                        │   Endpoints       │
-                        │   (Main.hs)       │
-                        │                   │
-                        │  • lock()         │
-                        │  • approve()      │
-                        │  • release()      │
-                        │  • refund()       │
-                        │                   │
-                        └───────────────────┘
-```
 
-### Component Interaction Flow
+### Workflow Sequence
 
-```
-Sequence Diagram:
-
-Depositor       Officials        Beneficiary      Blockchain
-   |                |                 |               |
-   |--- lock() ------------------------>               |
-   |                |                 |               |
-   |                |--- approve() ------------------>|
-   |                |                 |               |
-   |                |--- approve() ------------------>|
-   |                |                 |               |
-   |                |                 |--- release() ->|
-   |                |                 |               |
-   |<-------------- Funds Released ------------------>|
+```mermaid
+sequenceDiagram
+    participant D as Depositor (Wallet 1)
+    participant O1 as Official 1 (Wallet 3)
+    participant O2 as Official 2 (Wallet 4)
+    participant B as Beneficiary (Wallet 2)
+    participant SC as Smart Contract
+    participant BC as Blockchain
+    
+    Note over D,B: Phase 1: Fund Locking
+    D->>SC: lock() with 10 ADA
+    SC->>BC: Create UTxO with datum
+    
+    Note over D,B: Phase 2: Approvals (before deadline)
+    O1->>SC: approve()
+    SC->>BC: Update datum<br/>approvals: [O1]
+    
+    O2->>SC: approve()
+    SC->>BC: Update datum<br/>approvals: [O1, O2]
+    
+    Note over D,B: Phase 3: Release
+    B->>SC: release()
+    SC->>BC: Validate: 2 approvals ≥ required<br/>Validate: before deadline<br/>Validate: beneficiary signature
+    BC->>B: Transfer 10 ADA
+    
+    Note over D,B: Alternative: Refund Scenario
+    alt Insufficient approvals by deadline
+        D->>SC: refund()
+        SC->>BC: Validate: after deadline<br/>Validate: approvals < required<br/>Validate: depositor signature
+        BC->>D: Return 10 ADA
+    end
 ```
 
 ---
@@ -270,6 +313,31 @@ trace = do
 
 ## 7. 🔄 Complete Workflow Example
 
+### State Transition Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> Locked: Depositor calls lock()
+    Locked --> Approved1: Official1 approves
+    Approved1 --> Approved2: Official2 approves
+    Approved2 --> Released: Beneficiary releases
+    
+    Locked --> Refunded: Deadline passed<br/>+ insufficient approvals
+    Approved1 --> Refunded: Deadline passed<br/>+ insufficient approvals
+    
+    state Locked {
+        [*] --> Waiting
+        Waiting --> HasApprovals: At least 1 approval
+    }
+    
+    state Approved2 {
+        ReadyForRelease
+    }
+    
+    Released --> [*]
+    Refunded --> [*]
+```
+
 ### Step-by-Step Execution
 
 ```haskell
@@ -315,19 +383,16 @@ Final:    Funds transferred to Wallet2 (Beneficiary)
 
 ## 8. 🧪 Testing Strategy
 
-### Test Cases
+### Test Coverage Matrix
 
-1. **Happy Path** (All approvals before deadline)
-   - Deposit → Approve ×2 → Release → Funds received
-
-2. **Insufficient Approvals** (Refund scenario)
-   - Deposit → Approve ×1 → Wait deadline → Refund → Funds returned
-
-3. **Edge Cases**:
-   - Double approval attempt (should fail)
-   - Release without sufficient approvals (should fail)
-   - Refund before deadline (should fail)
-   - Release after deadline with approvals (should fail)
+| Test Case | Action Sequence | Expected Result |
+|-----------|----------------|-----------------|
+| Happy Path | lock → approve ×2 → release | Success, funds released |
+| Insufficient Approvals | lock → approve ×1 → refund after deadline | Success, funds refunded |
+| Double Approval | lock → approve → approve (same official) | Failure |
+| Early Refund | lock → refund before deadline | Failure |
+| Unauthorized Release | lock → approve ×2 → release (not beneficiary) | Failure |
+| Late Release | lock → approve ×2 → release after deadline | Failure |
 
 ### Emulator Testing
 ```haskell
@@ -390,3 +455,16 @@ testFullWorkflow = do
 5. **Comprehensive Testing**: Full emulator trace validates all scenarios
 
 This multi-signature escrow contract provides a robust foundation for implementing governance-controlled fund release mechanisms, suitable for DAOs, corporate treasuries, or grant disbursement systems.
+
+---
+
+## 🔗 Related Resources
+
+- [Plutus Documentation](https://plutus.readthedocs.io/)
+- [Cardano Developer Portal](https://developers.cardano.org/)
+- [Mermaid.js Documentation](https://mermaid-js.github.io/mermaid/)
+- [Plutus Pioneer Program](https://plutus-pioneer-program.readthedocs.io/)
+
+---
+
+*Note: This tutorial assumes familiarity with Haskell, Plutus, and basic blockchain concepts. For beginners, start with the Plutus Pioneer Program materials.*
