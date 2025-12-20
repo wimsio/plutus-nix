@@ -58,7 +58,7 @@ common common-all-tests
 
 library 
     import:            common-all
-    hs-source-dirs:    lecture,tests,lecture/boilerPlate,EBU/Onchain
+    hs-source-dirs:    lecture,tests,lecture/boilerPlate,Ebu/Onchain
     exposed-modules:
       CGPlutusUtilsv1
       CGTime
@@ -342,7 +342,7 @@ test-suite wspace-tests
 test-suite escrow-emulator
   import: common-all-tests
   type: exitcode-stdio-1.0
-  hs-source-dirs: EBU/Offchain
+  hs-source-dirs: Ebu/Offchain
   main-is: Emulator.hs
 
   build-depends:
