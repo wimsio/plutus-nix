@@ -17,7 +17,7 @@ import Plutus.Trace.Emulator as Emulator
 import Wallet.Emulator.Wallet
 
 -- reuse YOUR on-chain code
-import OnChain.EscrowValidator
+import OnChain.PublicFund
 
 ------------------------------------------------------------
 -- Schema
