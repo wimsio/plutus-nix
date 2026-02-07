@@ -1,4 +1,4 @@
-# 🧠 Plutus Smart Contracts Setup Guide with Nix & Cabal
+# 🧠 Plutus Smart Contracts Setup Guide with Nix & Cabal 2026
 
 <img src="https://github.com/user-attachments/assets/fe3da9b9-c2cf-4c2a-8ad6-b66e543e530a" alt="placeholder" width="80" height="50">
 **Pheidippides — rapid Plutus Application Development (rPAD)**
