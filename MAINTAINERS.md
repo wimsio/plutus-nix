@@ -1,13 +1,15 @@
-# Maintainers
+# Support
 
-This project is maintained by:
+## Where to ask questions
+- GitHub Discussions (preferred for Q&A)
+- GitHub Issues (bugs / actionable work items)
 
-- @wimsio (primary)
+## Response expectations
+- Best effort. This is an open-source educational project.
+- PRs are welcome for fixes and improvements.
 
-## How maintainership works
-- Maintainers review PRs, cut releases, and triage issues.
-- New maintainers can be added by consensus of existing maintainers.
-
-## Contact
-Use GitHub Discussions or Issues for public questions.
-For security issues, follow SECURITY.md.
+## What to include in bug reports
+- OS + Nix version
+- `nix --version`
+- `cabal --version`
+- What command you ran + full output
