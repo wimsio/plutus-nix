@@ -25,10 +25,6 @@ jobs:
       - name: Flake check
         run: nix flake check --print-build-logs
 
-      # Build default package (if defined)
-      - name: Nix build
-        run: nix build --print-build-logs
-
       # Try running cabal tests inside a nix dev shell.
       # Adjust the path if your Cabal project is elsewhere.
       - name: Cabal build & test (code/wspace)
