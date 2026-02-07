@@ -1,0 +1,7 @@
+# Default owners for everything
+* @wimsio
+
+# (Optional) more specific ownership
+/code/ @wimsio
+/coxy-plutus-builder/ @wimsio
+/plutus-starter-kit/ @wimsio
