@@ -29,12 +29,4 @@ jobs:
       - name: Flake check
         run: nix flake check --print-build-logs
 
-      # Optional: only keep this if code/wspace really exists and you want cabal tests
-      - name: Cabal build & test (code/wspace)
-        run: |
-          nix develop -c bash -lc '
-            set -euo pipefail
-            cd code/wspace
-            cabal build all
-            cabal test all --test-show-details=direct
-          '
+    
