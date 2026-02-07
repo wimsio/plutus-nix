@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nix-build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      # ---- Nix caching (recommended) ----
+      # 1) Create a Cachix cache (free tier works)
+      # 2) Add repo secret: CACHIX_AUTH_TOKEN
+      # 3) Set cache name below
+      - name: Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: plutus-nix
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Flake check
+        run: nix flake check --no-build --print-build-logs
+
+      - name: Build flake default (if defined)
+        run: nix build --print-build-logs
+
+      - name: Build & test Cabal project (code/wspace)
+        run: |
+          nix develop -c bash -lc '
+            set -euo pipefail
+            cd code/wspace
+            cabal --version
+            cabal build all
+            cabal test all --test-show-details=direct
+          '
